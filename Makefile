@@ -27,6 +27,7 @@ setup:
 	sudo ip addr add 192.168.64.44/24 dev tap0
 	sudo ip link set dev tap0 up
 	sudo arp -i tap0 -s 192.168.64.200 00:00:00:00:00:02
+	sudo ip route del default 2> /dev/null || true
 	sudo ip route add default via 192.168.64.200
 clean:
 	rm -f *.o *.c~ *.h~ tx rx tapio netdb cmac test-netdb \
