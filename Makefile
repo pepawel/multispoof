@@ -1,6 +1,8 @@
 # FIXME: don't link unnessesary libraries
 CFLAGS=-ggdb -Wall
 LDFLAGS=-lnet -lpcap
+VERSION=`darcs chan | egrep "\ \ tagged" | head -n 1 | cut -d " " -f 4`
+NAME=multispoof-${VERSION}
 all: mspoof rx tx
 mspoof: mspoof.o rx-printpkt.o tx-getpkt.o
 rx: rx.o rx-printpkt.o
@@ -17,4 +19,8 @@ setup:
 	arp -i tap0 -s 10.0.0.2 a:b:c:d:e:f
 clean:
 	rm -f *.o tx rx mspoof cscope.out
-
+dist:
+	test ! -e ${NAME}.tar.gz
+	cd doc && make clean
+	make clean
+	darcs dist --dist-name ${NAME}
