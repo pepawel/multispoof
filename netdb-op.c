@@ -136,11 +136,11 @@ cmd_getmac(gchar **tab, guint count, gchar **out_msg)
 		else
 		{
 			mac = db_getmac(ip);
-			g_free(ip);
 			if (NULL == mac)
 				msg = g_strdup_printf("-ERR No MAC found for %s\n", ip);
 			else
 				msg = g_strdup_printf("+OK %s\n", mac);
+			g_free(ip);
 		}
 	}
 	

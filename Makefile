@@ -18,6 +18,8 @@ cs:
 defmac:
 	echo "setvar defmac 55:55:55:55:55:55" | \
 	socat UNIX-CONNECT:netdbsocket -
+sniff:
+	sudo tcpdump -eni tap0
 setup:
 	sudo ip link set addr 1:2:3:4:5:6 dev tap0
 	sudo ip addr add 10.0.0.1/24 dev tap0
