@@ -14,4 +14,7 @@
 - Ciekawa wlasciwosc architektury rx eth0 | mspoof | tx eth0
 	Mo¿na podaæ inny interfejs do nas³uchu, a inny do wysy³ania
 	pakietów. To mo¿e przydaæ siê przy wifi.
+- zaleta pipeline'u: latwosc testowania (poprawnosci i wydajnosci)
+  przyklad: test-generator
+- dlaczego nie latex, nie docbook tylko tbook
 

@@ -15,5 +15,11 @@ netfilter/iptables:
 www.netfilter.org
 itpables(8)
 
+unix:
+ESR The art of Unix programming
+
+tbook
+Makefile?
+
 other:
 arp(8)

@@ -7,15 +7,8 @@
 #define PNAME "tx"
 
 #include "common.h"
-#include "tx-getpkt.h"
-
-/* Ethernet header */
-struct sniff_ethernet
-{
-  u_int8_t ether_dhost[ETHER_ADDR_LEN];	/* Destination host address */
-  u_int8_t ether_shost[ETHER_ADDR_LEN];	/* Source host address */
-  u_int16_t ether_type;		/* IP? ARP? RARP? etc */
-};
+#include "getpkt.h"
+#include "netheaders.h"
 
 void usage()
 {
@@ -26,7 +19,8 @@ void usage()
 	return;
 }
 
-/* Send packet. FIXME: free ptag after last invocation of this func */
+/* Send packet (byte array) p of size s using libnet context l.
+ * FIXME: free ptag after last invocation of this func */
 /* FIXME: add error strings */
 int send_packet(l, p, s)
 	libnet_t *l;
@@ -40,8 +34,8 @@ int send_packet(l, p, s)
 		int ret, result = -1;
 		
 		/* Pointers magic FIXME: remove magic constants use casts */
-		payload = p + sizeof(struct sniff_ethernet);
-		payload_s = s - sizeof(struct sniff_ethernet);
+		payload = p + sizeof(sniff_ethernet_t);
+		payload_s = s - sizeof(sniff_ethernet_t);
 		dst = p + 0;
 		src = p + 6;
 		type = p[13] + (p[12] * 0x100);
@@ -106,16 +100,19 @@ main(int argc, char **argv)
 		while(1)
 		{
 			ret = get_packet(packet, &packet_s);
-			if (ret == -1)
+			if (-1 == ret)
 			{
-				fprintf(stderr, "%s: malformed input\n", PNAME);
-				error = 1;
+				fprintf(stderr, "%s: malformed packet\n", PNAME);
+			}
+			else if (0 == ret)
+			{
+				error = 0;
 				break;
 			}
 			else
 			{
 				ret = send_packet(l, packet, packet_s);
-				if (ret == -1)
+				if (-1 == ret)
 				{
 					fprintf(stderr, "%s: sending failed: %s\n", PNAME, "FIXME");
 					error = 1;

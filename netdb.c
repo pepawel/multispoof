@@ -44,10 +44,10 @@ int serversocket; /* Socket for accepting new clients */
 char* socketname = "netdbsocket"; /* File name of the socket */
 char* cachefile = "netdb.cache"; /* Name of the cache file */
 
+/* Use list of FILE pointers to populate fd_set given as fds_pointer */
 int populate_fd_set(GSList *list, fd_set *fds_pointer)
 {
 	GSList *li;
-	/* FIXME: debug */
 	for (li = list; NULL != li; li = li->next)
 	{
 		FD_SET(fileno(li->data), fds_pointer);
@@ -100,6 +100,9 @@ accept_and_add(GSList **out_list, int serversocket)
 	return 1;
 }
 
+/* Finds command given by name in global commands[] array.
+ * Returns index of command found, or -1 when there is no
+ * such command. */
 int
 find_command(char* name)
 {
@@ -147,6 +150,9 @@ dispatch_command(gchar **tab, char **out_msg)
 	return result;
 }
 
+/* Reads line from given f stream, tokenizes it and executes
+ * using dispatch_command().
+ * Returns result of command execution, or 0 when end of file. */
 #define MAX_COMMAND_SIZE 128
 int
 get_and_serve(FILE* f)
@@ -186,6 +192,14 @@ get_and_serve(FILE* f)
 	return result;
 }
 
+/* Serves new and existing connections on given socket.
+ * Connections are maintained as a linked list of streams.
+ * New connections are served using accept_and_add(),
+ * existing connections are handled with get_and_serve().
+ * 
+ * This function doesn't return.
+ * FIXME: what about memory dealocation, files closing on CTRL-C
+ *        or someting like that? */
 int
 serve_connections(int serversocket)
 {

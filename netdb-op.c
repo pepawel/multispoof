@@ -164,7 +164,8 @@ cmd_dump(gchar **tab, guint count, gchar **out_msg)
 	*out_msg = msg;
 	return 1;
 }
-	
+
+/* NULL terminated array of commands */
 command_t commands[] =
 {
 	{"quit", cmd_quit},

@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include "rx-printpkt.h"
+#include "printpkt.h"
 
+/* Prints packet (byte array) p of length l in hex. */
 void print_packet(const u_char *p, const u_int32_t l)
 {
 	int i;

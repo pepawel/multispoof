@@ -28,7 +28,7 @@ db_init()
 	return;
 }
 
-/* Free hash table. */
+/* Free hash table and variables. */
 void
 db_free()
 {

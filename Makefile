@@ -7,14 +7,17 @@ NAME=multispoof-${VERSION}
 # It will break on _darcs hierarchy change.
 CHANGELOG_HACK=_darcs/current/Changelog
 all: tapio rx tx netdb cmac
-tapio: tapio.o rx-printpkt.o tx-getpkt.o
-rx: rx.o rx-printpkt.o
-tx: tx.o tx-getpkt.o
+tapio: tapio.o printpkt.o getpkt.o
+rx: rx.o printpkt.o
+tx: tx.o getpkt.o
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
-cmac: cmac.o tx-getpkt.o rx-printpkt.o ndb-client.o
+cmac: cmac.o getpkt.o printpkt.o ndb-client.o validate.o
 test-netdb: test-netdb.o ndb-client.o
 cs:
 	cscope -bR
+defmac:
+	echo "setvar defmac 55:55:55:55:55:55" | \
+	socat UNIX-CONNECT:netdbsocket -
 setup:
 	sudo ip link set addr 1:2:3:4:5:6 dev tap0
 	sudo ip addr add 10.0.0.1/24 dev tap0
@@ -24,7 +27,7 @@ setup:
 	sudo ip route add 10.0.3.0/24 dev tap0
 	sudo arp -i tap0 -s 10.0.0.2 a:b:c:d:e:f
 clean:
-	rm -f *.o tx rx tapio netdb cmac cscope.out netdbsocket
+	rm -f *.o tx rx tapio netdb cmac test-netdb cscope.out netdbsocket
 dist:
 	# Prevent overwriting already released tarball
 	test ! -e ${NAME}.tar.gz

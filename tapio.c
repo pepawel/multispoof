@@ -18,8 +18,8 @@
 #include <linux/if_tun.h> /* ifr_flags like IFF_TUN etc. */
 
 #include "common.h"
-#include "rx-printpkt.h"
-#include "tx-getpkt.h"
+#include "printpkt.h"
+#include "getpkt.h"
 
 /* Ethernet header */
 struct sniff_ethernet
@@ -101,6 +101,11 @@ main(int argc, char **argv)
 					{
 						fprintf(stderr, "%s: malformed input\n", PNAME);
 						error = 1;
+						break;
+					}
+					else if (0 == ret)
+					{
+						error = 0;
 						break;
 					}
 					else

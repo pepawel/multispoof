@@ -4,7 +4,6 @@
 
 /* Program name */
 #define PNAME "rx"
-#define _BSD_SOURCE 1
 
 #include <stdio.h>
 #include <pcap.h>
@@ -14,47 +13,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-/* #include <net/if.h> */
-/* #include <netinet/if_ether.h> */
-#include <net/ethernet.h>
 
 #include <stdlib.h> /* exit */
 #include <unistd.h> /* read, sleep */
 
-#include "rx-printpkt.h"
-
-/* Ethernet header */
-struct sniff_ethernet
-{
-  u_char ether_dhost[ETHER_ADDR_LEN];	/* Destination host address */
-  u_char ether_shost[ETHER_ADDR_LEN];	/* Source host address */
-  u_short ether_type;		/* IP? ARP? RARP? etc */
-};
-
-/* IP header */
-struct sniff_ip
-{
-#if BYTE_ORDER == LITTLE_ENDIAN
-  u_int ip_hl:4,		/* header length */
-    ip_v:4;			/* version */
-#if BYTE_ORDER == BIG_ENDIAN
-  u_int ip_v:4,			/* version */
-    ip_hl:4;			/* header length */
-#endif
-#endif				/* not _IP_VHL */
-  u_char ip_tos;		/* type of service */
-  u_short ip_len;		/* total length */
-  u_short ip_id;		/* identification */
-  u_short ip_off;		/* fragment offset field */
-#define IP_RF 0x8000		/* reserved fragment flag */
-#define IP_DF 0x4000		/* dont fragment flag */
-#define IP_MF 0x2000		/* more fragments flag */
-#define IP_OFFMASK 0x1fff	/* mask for fragmenting bits */
-  u_char ip_ttl;		/* time to live */
-  u_char ip_p;			/* protocol */
-  u_short ip_sum;		/* checksum */
-  struct in_addr ip_src, ip_dst;	/* source and dest address */
-};
+#include "printpkt.h"
+#include "netheaders.h"
 
 /* Called on every sniffed packet by pcap_loop */
 void
@@ -62,14 +26,14 @@ got_packet(u_char *args, const struct pcap_pkthdr *header,
 					 const u_char *packet)
 {
   /* Define pointers for packet's attributes */
-  const struct sniff_ethernet *ethernet;	/* The ethernet header */
-  const struct sniff_ip *ip;	/* The IP header */
+  const sniff_ethernet_t *ethernet;	/* The ethernet header */
+  const sniff_ip_t *ip;	/* The IP header */
   /* And define the size of the structures we're using */
-  int size_ethernet = sizeof (struct sniff_ethernet);
+  int size_ethernet = sizeof (sniff_ethernet_t);
 
   /* Define our packet's attributes */
-  ethernet = (struct sniff_ethernet *) (packet);
-  ip = (struct sniff_ip *) (packet + size_ethernet);
+  ethernet = (sniff_ethernet_t *) (packet);
+  ip = (sniff_ip_t *) (packet + size_ethernet);
 	
 	/* Send packet */
 	print_packet(packet, header->len);

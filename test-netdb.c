@@ -6,6 +6,7 @@
 
 #include "ndb-client.h"
 
+/* Executes getmac command on netdb count times */
 void test_netdb(int count)
 {
 	int ret;

@@ -1,8 +1,10 @@
 #include <stdio.h>
-#include "tx-getpkt.h"
+#include "getpkt.h"
 
 #include "common.h"
 
+/* Convert hexadecimal string to array of bytes tab of size length.
+ * Returns 1 on success, -1 otherwise. */
 int
 hex2byte(tab, string, size)
 	u_int8_t* tab;
@@ -42,10 +44,10 @@ hex2byte(tab, string, size)
 		return -1;
 }
 
-/* p - buffer for a packet
+/* Gets packet in hexadecimal line form from standard input.
+ * p - buffer for the packet
  * s - actual size of this packet
- * 
- * Returns 1 on success, -1 otherwise.
+ * Returns 1 on success, 0 on eof and -1 on error.
  */
 int get_packet(p, s)
 	u_char *p;
@@ -60,7 +62,10 @@ int get_packet(p, s)
 	pret = fgets(tbuf, TBUF_SIZE, stdin);
 	if (NULL == pret)
 	{
-		result = -1;
+		if (feof(stdin))
+			result = 0;
+		else
+			result = -1;
 	}
 	else
 	{
