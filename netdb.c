@@ -8,6 +8,8 @@
 #include <sys/time.h> /* select */
 #include <glib.h>
 
+#include "netdb.h"
+
 #define max(a,b) ((a)>(b) ? (a):(b))
 
 /* FIXME: limit number of connection to prevent fd_set overflow */
@@ -84,6 +86,20 @@ accept_and_add(GSList **out_list, int serversocket)
 	return 1;
 }
 
+int
+find_command(char* name)
+{
+	int i;
+	int result = -1;
+	for (i = 0; NULL != commands[i].name; i++)
+		if (0 == strcmp(name, commands[i].name))
+		{
+			result = i;
+			break;
+		}
+	return result;
+}
+
 /* This function launch command specified in tab using
  * associated function, leaves result in out_msg.
  * It returns 0 if connection should be closed, 1 otherwise. */
@@ -91,16 +107,30 @@ int
 dispatch_command(gchar **tab, char **out_msg)
 {
 	guint num;
+	int c;
+	int result = 1;
 	num = g_strv_length(tab);
 	/* We are intereseted only in non-zero array of commands */
 	if (0 != num)
 	{
 		/* FIXME: use array of structers with function pointers */
-		*out_msg = g_strdup("-ERR Not implemented\n");
+		c = find_command(tab[0]);
+		if (-1 == c)
+		{
+			*out_msg = g_strdup("-ERR No such command\n");
+			result = 1;
+		}
+		else
+		{
+			result = (*(commands[c].func))(tab, num, out_msg);
+		}
 	}
 	else
+	{
 		*out_msg = g_strdup("");
-	return 1;
+		result = 1;
+	}
+	return result;
 }
 
 #define MAX_COMMAND_SIZE 128

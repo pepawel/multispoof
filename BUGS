@@ -1,0 +1,3 @@
+netdb:
+- when there more than one space between command arguments
+  it is threated as argument.

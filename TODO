@@ -1,0 +1,8 @@
+netdb:
+- on SIGTERM save data to cache as lines in form:
+	add 1.2.3.4 aa:bb:cc:dd:ee:ff
+	also remove socket
+- implement connection limit
+- hash stuff in other file
+- fix bug which shows when there is too much input data
+
