@@ -9,6 +9,7 @@
 #include <glib.h>
 
 #include "netdb.h"
+#include "netdb-db.h"
 
 #define max(a,b) ((a)>(b) ? (a):(b))
 
@@ -271,9 +272,13 @@ main(int argc, char* argv[])
 		return 1;
 	}
 
+	/* Create db */
+	db_init();
+	
 	serve_connections(serversocket);
 	
 	/* Clean up */
+	db_free();
 	close(serversocket);
 	
 	ret = unlink(socketname);
