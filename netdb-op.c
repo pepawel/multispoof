@@ -14,6 +14,48 @@ cmd_quit(gchar **tab, guint count, gchar **out_msg)
 }
 
 int
+cmd_setvar(gchar **tab, guint count, gchar **out_msg)
+{
+	char *msg;
+	int ret;
+	if (count < 3)
+	{
+		msg = "-ERR Too few arguments\n";
+	}
+	else
+	{
+		ret = db_setvar(tab[1], tab[2]);
+		if (-1 == ret)
+			msg = "-ERR Illegal variable\n";
+		else
+			msg = "+OK Variable set\n";
+	}
+	*out_msg = g_strdup(msg);
+	return 1;
+}
+
+int
+cmd_getvar(gchar **tab, guint count, gchar **out_msg)
+{
+	char *msg;
+	char *value;
+	if (count < 2)
+	{
+		msg = g_strdup("-ERR Too few arguments\n");
+	}
+	else
+	{
+		value = db_getvar(tab[1]);
+		if (NULL == value)
+			msg = g_strdup("-ERR Variable not set or illegal\n");
+		else
+			msg = g_strdup_printf("+OK %s\n", value);
+	}
+	*out_msg = msg;
+	return 1;
+}
+
+int
 cmd_add(gchar **tab, guint count, gchar **out_msg)
 {
 	char *msg, *mac, *ip;
@@ -129,6 +171,8 @@ command_t commands[] =
 	{"add", cmd_add},
 	{"remove", cmd_remove},
 	{"getmac", cmd_getmac},
+	{"setvar", cmd_setvar},
+	{"getvar", cmd_getvar},
 	{"dump", cmd_dump},
 	{(char *) NULL, (netdb_func_t *) NULL}
 };

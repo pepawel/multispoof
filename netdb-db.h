@@ -8,4 +8,7 @@ void db_free();
 char *db_getmac(char *ip);
 char *db_dump(char *format_string);
 
+int db_setvar(char *variable, char *value);
+char *db_getvar(char *variable);
+
 #endif

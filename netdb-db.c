@@ -4,6 +4,20 @@
  * Ip and mac stored as strings. */
 GHashTable *db;
 
+/* Variables support */
+typedef struct
+{
+	char *name;
+	char *value;
+} variable_t;
+
+/* Global array of variables */
+variable_t variable_tab[] =
+{
+	{"defmac", (char *) NULL},
+	{(char *) NULL, (char *) NULL}
+};
+
 /* Allocate memory for hash table. */
 void
 db_init()
@@ -18,9 +32,16 @@ db_init()
 void
 db_free()
 {
+	int i;
 	/* There is no need to free elements, because this function will
 	 * do so automatically (see comment in db_init) */
 	g_hash_table_destroy(db);
+	
+	/* Free variables */
+	for (i = 0; NULL != variable_tab[i].name; i++)
+	{
+		g_free(variable_tab[i].value); /* safe: if NULL nothing happens */
+	}
 	return;
 }
 
@@ -102,3 +123,38 @@ db_dump(char *format_string)
 	g_free(dump.format_string);
 	return dump.str;
 }
+
+/* Associates value with variable. Allocated memory for value.
+ * Returns 1 on success, -1 when variable not found.
+ * NOTE: You can set only allowed variables - listed in
+ *       variable_tab[] global array */
+int
+db_setvar(char *variable, char *value)
+{
+	int i;
+	for (i = 0; NULL != variable_tab[i].name; i++)
+	{
+		if (0 == strcmp(variable, variable_tab[i].name))
+		{
+			g_free(variable_tab[i].value); /* safe: if NULL nothing happens */
+			variable_tab[i].value = g_strdup(value);
+			return 1;
+		}
+	}
+	return -1;
+}
+
+/* Returns pointer to variable value. Returns value or NULL
+ * if variable not found or not set. */
+char *
+db_getvar(char *variable)
+{
+	int i;
+	for (i = 0; NULL != variable_tab[i].name; i++)
+	{
+		if (0 == strcmp(variable, variable_tab[i].name))
+			return variable_tab[i].value;
+	}
+	return NULL;
+}
+
