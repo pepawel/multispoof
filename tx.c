@@ -35,8 +35,8 @@ send_packet (l, p, s)
   int ret, result = -1;
 
   /* Pointers magic FIXME: remove magic constants use casts */
-  payload = p + sizeof (sniff_ethernet_t);
-  payload_s = s - sizeof (sniff_ethernet_t);
+  payload = p + sizeof (ethernet_packet_t);
+  payload_s = s - sizeof (ethernet_packet_t);
   dst = p + 0;
   src = p + 6;
   type = p[13] + (p[12] * 0x100);
@@ -104,7 +104,16 @@ main (int argc, char **argv)
       }
       else
       {
-	ret = send_packet (l, packet, packet_s);
+	/* Add padding if neccessary. Padding is added by ethernet
+	 * driver, but:
+	 * - I want to see correct packet on network interface
+	 *   using tcpdump locally
+	 * - I do not trust ethernet drivers these days ;-) */
+	if (packet_s < 60)
+	{
+	  memset (packet + packet_s, 0, 60 - packet_s);
+	}
+	ret = send_packet (l, packet, packet_s < 60 ? 60 : packet_s);
 	if (-1 == ret)
 	{
 	  fprintf (stderr, "%s: sending failed: %s\n", PNAME, "FIXME");

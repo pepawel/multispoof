@@ -26,15 +26,15 @@ got_packet (u_char * args, const struct pcap_pkthdr *header,
 	    const u_char * packet)
 {
   /* Define pointers for packet's attributes */
-  const sniff_ethernet_t *ethernet;	/* The ethernet header */
-  const sniff_ip_t *ip;		/* The IP header */
+  const ethernet_packet_t *ethernet;	/* The ethernet header */
+  const ip_packet_t *ip;	/* The IP header */
 
   /* And define the size of the structures we're using */
-  int size_ethernet = sizeof (sniff_ethernet_t);
+  int size_ethernet = sizeof (ethernet_packet_t);
 
   /* Define our packet's attributes */
-  ethernet = (sniff_ethernet_t *) (packet);
-  ip = (sniff_ip_t *) (packet + size_ethernet);
+  ethernet = (ethernet_packet_t *) (packet);
+  ip = (ip_packet_t *) (packet + size_ethernet);
 
   /* Send packet */
   print_packet (packet, header->len);
@@ -46,8 +46,9 @@ void
 usage ()
 {
   fprintf (stderr, "Usage:\n");
-  fprintf (stderr, "\t%s iface\n", PNAME);
-  fprintf (stderr, "Where iface is a interface to sniff on.\n");
+  fprintf (stderr, "\t%s iface filter\n", PNAME);
+  fprintf (stderr, "Where iface is a interface to sniff on,\n");
+  fprintf (stderr, "      filter is a pcap filter.\n");
   return;
 }
 
@@ -64,16 +65,17 @@ main (int argc, char **argv)
   struct bpf_program fp;	/* hold compiled program */
   bpf_u_int32 maskp;		/* subnet mask */
   bpf_u_int32 netp;		/* ip */
-  char filter_app[] = "ip";
+  char *filter_app;
 
   /* Set device for sniffing */
-  if (argc < 2)
+  if (argc < 3)
   {
     usage ();
     exit (1);
   }
 
   dev = argv[1];
+  filter_app = argv[2];
   pcap_lookupnet (dev, &netp, &maskp, errbuf);
 
   /* Print device to the user */

@@ -2,6 +2,8 @@
 #include <sys/types.h>		/* socket */
 #include <unistd.h>		/* close */
 #include <sys/socket.h>
+#include <arpa/inet.h>		/* struct in_addr */
+#include <libnet.h>		/* libnet_hex_aton */
 #include <sys/un.h>
 #include <string.h>		/* strerror */
 #include <errno.h>		/* errno */
@@ -74,6 +76,31 @@ execute_command (out_buf, command, arg)
 
     result = (tmp_buf[0] == '+' ? 1 : 0);
   }
+  return result;
+}
+
+/* Executes getmac command on netdb. On success fills mac
+ * and returns 1. On failure returns -1, leaving mac untouched. */
+int
+ndb_execute_getmac (u_int8_t * mac, struct in_addr ip)
+{
+  int ret, mac_len, result;
+  char *buf;
+  u_int8_t *mac_tmp;
+
+  ret = execute_command (&buf, "getmac", inet_ntoa (ip));
+  if (1 == ret)
+  {
+    /* Convert mac in string form to array of bytes */
+    mac_tmp = libnet_hex_aton (buf, &mac_len);
+    /* ethernet mac == 6 bytes */
+    memcpy (mac, mac_tmp, 6);
+    g_free (mac_tmp);
+    result = 1;
+  }
+  else
+    result = -1;
+  g_free (buf);
   return result;
 }
 

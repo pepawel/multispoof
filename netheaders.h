@@ -11,7 +11,7 @@ typedef struct
   u_char ether_dhost[ETHER_ADDR_LEN];	/* Destination host address */
   u_char ether_shost[ETHER_ADDR_LEN];	/* Source host address */
   u_short ether_type;		/* IP? ARP? RARP? etc */
-} sniff_ethernet_t;
+} ethernet_packet_t;
 
 /* IP header */
 typedef struct
@@ -36,6 +36,22 @@ typedef struct
   u_char ip_p;			/* protocol */
   u_short ip_sum;		/* checksum */
   struct in_addr ip_src, ip_dst;	/* source and dest address */
-} sniff_ip_t;
+} ip_packet_t;
+
+/* ARP header + IP payload */
+typedef struct
+{
+  u_int16_t ar_hrd;		/* format of hardware address */
+  u_int16_t ar_pro;		/* format of protocol address */
+  u_int8_t ar_hln;		/* length of hardware address (ETH_ADDR_LEN) */
+  u_int8_t ar_pln;		/* length of protocol address (IP_ADDR_LEN) */
+  u_int16_t ar_op;		/* operation */
+  /* Payload - IP specific */
+  u_int8_t s_mac[6];		/* sender hardware address */
+  /* FIXME: why struct in_addr doesn't work? It seems it is too big */
+  u_int8_t s_ip[4];		/* sender ip address */
+  u_int8_t t_mac[6];		/* target mac address */
+  u_int8_t t_ip[4];		/* target ip address */
+} arp_packet_t;
 
 #endif

@@ -29,7 +29,8 @@ u_int8_t *default_mac;
  * is changed to global default_mac.
  * Returns 1 on success, -1 otherwise.
  * NOTE: Function printf error messages itself. */
-/* FIXME: modularize this function - it is too long and ugly. */
+/* FIXME: modularize this function - it is too long and ugly
+ *        - do it like in arprep. */
 int
 change_mac (u_char * packet, u_int16_t packet_s)
 {
@@ -39,14 +40,14 @@ change_mac (u_char * packet, u_int16_t packet_s)
   u_int8_t *mac;
   struct in_addr ip_val;
 
-  const sniff_ethernet_t *ethernet;
-  const sniff_ip_t *ip;
+  const ethernet_packet_t *ethernet;
+  const ip_packet_t *ip;
   int ethernet_s, ip_s;
 
   /* Check for ip truncation */
-  ethernet_s = sizeof (sniff_ethernet_t);
-  ethernet = (sniff_ethernet_t *) (packet);
-  ip_s = sizeof (sniff_ip_t);
+  ethernet_s = sizeof (ethernet_packet_t);
+  ethernet = (ethernet_packet_t *) (packet);
+  ip_s = sizeof (ip_packet_t);
   if ((ethernet_s + ip_s) > packet_s)
   {
     /* Ip is truncated. */
@@ -55,7 +56,7 @@ change_mac (u_char * packet, u_int16_t packet_s)
   }
 
   /* Extract ip address from packet and convert to string */
-  ip = (sniff_ip_t *) (packet + ethernet_s);
+  ip = (ip_packet_t *) (packet + ethernet_s);
   /* Depending on spoof mode extract src or dst address */
   ip_val = (spoof_mode ? ip->ip_src : ip->ip_dst);
   ip_str = inet_ntoa (ip_val);
