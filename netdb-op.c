@@ -110,7 +110,7 @@ cmd_remove(gchar **tab, guint count, gchar **out_msg)
 			ret = db_remove(ip);
 			g_free(ip);
 			if (-1 == ret)
-				msg = "-ERR Entry not found\n";
+				msg = "-ERR No MAC found for given IP\n";
 			else
 				msg = "+OK Entry removed\n";
 		}
@@ -138,7 +138,7 @@ cmd_getmac(gchar **tab, guint count, gchar **out_msg)
 			mac = db_getmac(ip);
 			g_free(ip);
 			if (NULL == mac)
-				msg = g_strdup("-ERR Entry not found\n");
+				msg = g_strdup_printf("-ERR No MAC found for %s\n", ip);
 			else
 				msg = g_strdup_printf("+OK %s\n", mac);
 		}
