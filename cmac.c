@@ -101,6 +101,7 @@ change_mac (u_char * packet, u_int16_t packet_s)
 
 /* Gets default mac from netdb and sets global variable default_mac.
  * On success returns 1, -1 otherwise.
+ * Funtions will not return until "getvar defmac" return "+OK" status.
  * NOTE: Function prints error messages itself. */
 int
 update_default_mac ()
@@ -108,32 +109,31 @@ update_default_mac ()
   char *mac, *valid_mac;
   int ret, result, mac_len;
 
-  ret = execute_command (&mac, "getvar", "defmac");
-  if (1 != ret)
+  ret = -1;
+  while (1 != ret)
   {
-    fprintf (stderr, "%s (%s): Couldn't get default mac: %s\n",
-	     PNAME, p_mode_string, mac);
+    /* FIXME: here should be debug option check - if debug,
+     *        print message: "Trying to get defmac..." */
+    ret = execute_command (&mac, "getvar", "defmac");
+    usleep (100000);
+  }
+  /* Convert mac in string form to byte array */
+  valid_mac = get_std_mac_str (mac);
+  if (NULL == valid_mac)
+  {
+    fprintf (stderr, "%s (%s): Default mac not valid\n",
+	     PNAME, p_mode_string);
     result = -1;
   }
   else
   {
-    /* Convert mac in string form to byte array */
-    valid_mac = get_std_mac_str (mac);
-    if (NULL == valid_mac)
-    {
-      fprintf (stderr, "%s (%s): Default mac not valid\n",
-	       PNAME, p_mode_string);
-      result = -1;
-    }
-    else
-    {
-      default_mac = libnet_hex_aton (valid_mac, &mac_len);
-      fprintf (stderr, "%s (%s): Using %s as default mac\n",
-	       PNAME, p_mode_string, valid_mac);
-      g_free (valid_mac);
-      result = 1;
-    }
+    default_mac = libnet_hex_aton (valid_mac, &mac_len);
+    fprintf (stderr, "%s (%s): Using %s as default mac\n",
+	     PNAME, p_mode_string, valid_mac);
+    g_free (valid_mac);
+    result = 1;
   }
+
   g_free (mac);
   return result;
 }
