@@ -6,11 +6,12 @@ NAME=multispoof-${VERSION}
 # Dirty hack to make changelog available in tarball
 # It will break on _darcs hierarchy change.
 CHANGELOG_HACK=_darcs/current/Changelog
-all: tapio rx tx netdb
+all: tapio rx tx netdb cmac
 tapio: tapio.o rx-printpkt.o tx-getpkt.o
 rx: rx.o rx-printpkt.o
 tx: tx.o tx-getpkt.o
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
+cmac: cmac.o tx-getpkt.o rx-printpkt.o
 cs:
 	cscope -bR
 setup:
@@ -22,7 +23,7 @@ setup:
 	sudo ip route add 10.0.3.0/24 dev tap0
 	sudo arp -i tap0 -s 10.0.0.2 a:b:c:d:e:f
 clean:
-	rm -f *.o tx rx tapio netdb cscope.out netdbsocket
+	rm -f *.o tx rx tapio netdb cmac cscope.out netdbsocket
 dist:
 	# Prevent overwriting already released tarball
 	test ! -e ${NAME}.tar.gz

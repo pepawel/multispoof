@@ -44,6 +44,8 @@ hex2byte(tab, string, size)
 
 /* p - buffer for a packet
  * s - actual size of this packet
+ * 
+ * Returns 1 on success, -1 otherwise.
  */
 int get_packet(p, s)
 	u_char *p;

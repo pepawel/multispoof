@@ -12,6 +12,8 @@
 #include "netdb.h"
 #include "netdb-db.h"
 
+#define PNAME "netdb"
+
 #define max(a,b) ((a)>(b) ? (a):(b))
 
 /* FIXME: limit number of connection to prevent fd_set overflow */
@@ -19,6 +21,8 @@
 /* FIXME: this function is copied from glib source (because I use
  * 				old version of glib, which doesn't have it). */
 #if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 6))
+#ifndef _GLIB_HACK_
+#define _GLIB_HACK_
 guint
 g_strv_length (gchar **str_array)
 {
@@ -31,6 +35,7 @@ g_strv_length (gchar **str_array)
 
   return i;
 }
+#endif
 #endif
 
 /* Global variables, to make clean_up function work
@@ -75,14 +80,14 @@ accept_and_add(GSList **out_list, int serversocket)
 	clientsocket = accept(serversocket, NULL, NULL);
 	if (clientsocket == -1)
 	{
-		perror("netdb: accept");
+		fprintf(stderr, "%s: accept: %s\n", PNAME, strerror(errno));
 		return -1;
 	}
 
 	s = fdopen(clientsocket, "r+");
 	if (s == NULL)
 	{
-		perror("netdb: fdopen");
+		fprintf(stderr, "%s: fdopen: %s\n", PNAME, strerror(errno));
 		return -1;
 	}
 	/* Adding opened connection to list (FILE is pointer,
@@ -158,7 +163,7 @@ get_and_serve(FILE* f)
 		/* User closed the connection */
 		fprintf(f, "+OK Bye\n");
 		fflush(f);
-		result = 0;
+		result = 0; /* 0 means - close this connection */
 	}
 	else
 	{
@@ -193,6 +198,7 @@ serve_connections(int serversocket)
 
 	while(1)
 	{
+		fprintf(stderr, "%s: (debug) loop\n", PNAME);
 		FD_ZERO(&fds);
 		FD_SET(serversocket, &fds);
 		populate_fd_set(fd_list, &fds);
@@ -201,12 +207,12 @@ serve_connections(int serversocket)
 		ret = select(max_fd, &fds, NULL, NULL, NULL);
 		if (-1 == ret)
 		{
-			perror("netdb: select");
+			fprintf(stderr, "%s: select: %s\n", PNAME, strerror(errno));
 			return -1;
 		}
 		else if (0 == ret)
 		{
-			fprintf(stderr, "netdb: select returned 0\n");
+			fprintf(stderr, "%s: select returned 0\n", PNAME);
 			return -1;
 		}
 		else
@@ -214,12 +220,14 @@ serve_connections(int serversocket)
 			if (FD_ISSET(serversocket, &fds))
 			{
 				/* New connection */
+				fprintf(stderr, "%s: (debug) new connection\n", PNAME);
 				accept_and_add(&fd_list, serversocket);
 			}
 			else
 			{
 				/* New data on existing connections.
 				 * Need to find out which socket is ready to be read */
+				fprintf(stderr, "%s: (debug) data\n", PNAME);
 				for (li = fd_list; NULL != li; li = li->next)
 				{
 					if (FD_ISSET(fileno(li->data), &fds))	
@@ -263,8 +271,8 @@ clean_up(int sig)
 	}
 	else
 	{
-		fprintf(stderr, "netdb: Cache saving failed: %s\n",
-						strerror(errno));
+		fprintf(stderr, "%s: Cache saving failed: %s\n",
+						PNAME, strerror(errno));
 	}
 	
 	db_free();
@@ -273,7 +281,7 @@ clean_up(int sig)
 	ret = unlink(socketname);
 	if (ret == -1)
 	{
-		perror("netdb: Unlinking socket");
+		fprintf(stderr, "%s: unlink: %s\n", PNAME, strerror(errno));
 	}
 	exit(0);
 }
@@ -305,7 +313,7 @@ main(int argc, char* argv[])
 	serversocket = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (serversocket == -1)
 	{
-		perror("netdb: socket");
+		fprintf(stderr, "%s: socket: %s\n", PNAME, strerror(errno));
 		return 1;
 	}
 
@@ -316,14 +324,14 @@ main(int argc, char* argv[])
 	ret = bind(serversocket, (struct sockaddr *) &a, len);
 	if (ret == -1)
 	{
-		perror("netdb: bind");
+		fprintf(stderr, "%s: bind: %s\n", PNAME, strerror(errno));
 		return 1;
 	}
 	
 	ret = listen(serversocket, 3);
 	if (ret == -1)
 	{
-		perror("netdb: listen");
+		fprintf(stderr, "%s: listen: %s\n", PNAME, strerror(errno));
 		return 1;
 	}
 
@@ -333,11 +341,14 @@ main(int argc, char* argv[])
 	/* Fill db with data from cache */
 	load_db_from_cache();
 
-	/* Catch the signal which could stop the process */
+	/* Catch signals which could stop the process */
 	signal(SIGTERM, clean_up);
 	signal(SIGINT, clean_up);
 	signal(SIGQUIT, clean_up);
 	signal(SIGABRT, clean_up);
+	
+	/* Ignore SIGPIPE caused by disconnecting user */
+	signal(SIGPIPE, SIG_IGN);
 
 	/* Serve connections and return on error */
 	serve_connections(serversocket);
