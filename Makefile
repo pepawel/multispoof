@@ -1,8 +1,11 @@
 # FIXME: don't link unnessesary libraries
-CFLAGS=-ggdb -Wall
-LDFLAGS=-lnet -lpcap
+CFLAGS=-ggdb -Wall ${shell pkg-config --cflags glib-2.0}
+LDFLAGS=-lnet -lpcap ${shell pkg-config --libs glib-2.0}
 VERSION=`darcs chan | egrep "\ \ tagged" | head -n 1 | cut -d " " -f 4`
 NAME=multispoof-${VERSION}
+# Dirty hack to make changelog available in tarball
+# It will break on _darcs hierarchy change.
+CHANGELOG_HACK=_darcs/current/Changelog
 all: tapio rx tx netdb
 tapio: tapio.o rx-printpkt.o tx-getpkt.o
 rx: rx.o rx-printpkt.o
@@ -21,7 +24,15 @@ setup:
 clean:
 	rm -f *.o tx rx tapio netdb cscope.out netdbsocket
 dist:
+	# Prevent overwriting already released tarball
 	test ! -e ${NAME}.tar.gz
+	# If file Changelog exists in repository - stop, because
+	# otherwise it would be deleted
+	test ! -e ${CHANGELOG_HACK}
+	# Clean
 	cd doc && make clean
 	make clean
+	# Create changelog, create release, delete changelog
+	darcs changes > ${CHANGELOG_HACK}
 	darcs dist --dist-name ${NAME}
+	rm ${CHANGELOG_HACK}
