@@ -37,6 +37,7 @@ g_strv_length (gchar **str_array)
  * when called from signal handling routine. */
 int serversocket; /* Socket for accepting new clients */
 char* socketname = "netdbsocket"; /* File name of the socket */
+char* cachefile = "netdb.cache"; /* Name of the cache file */
 
 int populate_fd_set(GSList *list, fd_set *fds_pointer)
 {
@@ -249,16 +250,48 @@ void
 clean_up(int sig)
 {
 	int ret;
+	char *dump;
+	FILE *f;
 
+	f = fopen(cachefile, "w");
+	if (NULL != f)
+	{
+		dump = db_dump("add %s %s\n");
+		fprintf(f, dump);
+		g_free(dump);
+		fclose(f);
+	}
+	else
+	{
+		fprintf(stderr, "netdb: Cache saving failed: %s\n",
+						strerror(errno));
+	}
+	
 	db_free();
 	close(serversocket);
 	
 	ret = unlink(socketname);
 	if (ret == -1)
 	{
-		perror("netdb: unlink");
+		perror("netdb: Unlinking socket");
 	}
 	exit(0);
+}
+
+/* Feeds db from cachefile. It is done in the same way
+ * as when reading commands from sockets. File is open
+ * in "r" mode, so "+OK" responsed will be silently ignored. */
+void
+load_db_from_cache()
+{
+	FILE *f;
+	f = fopen(cachefile, "r");
+	if (NULL != f)
+	{
+		while (get_and_serve(f));
+		fclose(f);
+	}
+	return;
 }
 
 int
@@ -296,6 +329,9 @@ main(int argc, char* argv[])
 
 	/* Create db */
 	db_init();
+
+	/* Fill db with data from cache */
+	load_db_from_cache();
 
 	/* Catch the signal which could stop the process */
 	signal(SIGTERM, clean_up);

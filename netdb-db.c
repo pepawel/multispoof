@@ -74,6 +74,8 @@ _db_append(gpointer ipp, gpointer macp, gpointer dumpp)
 /* Function returns newly allocated string which is generated
  * using format_string for every entry in db. After use this
  * string should be freed.
+ * When db is empty, then it returns empty string (need to be
+ * freed anyway).
  *
  * Format string can use two strings: ip and mac (in that order)
  * 

@@ -61,7 +61,17 @@ cmd_getmac(gchar **tab, guint count, gchar **out_msg)
 int
 cmd_dump(gchar **tab, guint count, gchar **out_msg)
 {
-	*out_msg = db_dump("+OK %s %s\n");
+	char *msg;
+	char *status;
+	
+	msg = db_dump("%s %s\n");
+	if (0 == strlen(msg))
+		status = "-ERR No entries\n";
+	else
+		status = "+OK Dump complete\n";
+
+	msg = g_strconcat(msg, status, NULL);
+	*out_msg = msg;
 	return 1;
 }
 	
