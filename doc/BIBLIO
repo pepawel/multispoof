@@ -1,0 +1,19 @@
+tun/tap:
+kernel source documentation - tuntap.txt
+vtun/openvpn source code
+
+libpcap:
+tutorial on www.tcpdump.org
+pcap(3)
+tcpdump(1)
+
+libnet:
+presentation from RSA2004 conference on libnet features
+documentation on packetfactory
+
+netfilter/iptables:
+www.netfilter.org
+itpables(8)
+
+other:
+arp(8)

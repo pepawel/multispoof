@@ -1,0 +1,191 @@
+\documentclass[a4]{mwart}
+
+\usepackage[latin2]{inputenc}
+\usepackage[polish]{babel}
+\usepackage[T1]{fontenc}
+
+\usepackage{graphicx}
+
+\title{Zaawansowany MAC-spoofing}
+%\subtitle{Poszerzanie pasma transmisyjnego\\-- czyli jak oszukaæ ISP}
+\author{Pawe³ Pokrywka}
+
+\begin{document}
+
+\maketitle
+
+\section{Wstêp}
+	Ceny szerokopasmowych ³±cza internetowych oferowanych przez du¿ych
+	operatorów telekomunikacyjnych malej±, jednak nadal nie s± przystêpne
+	dla przeciêtnych obywateli. Popularn± alternatyw± jest korzystanie
+	z tzw. \emph{sieci osiedlowych}. Sieci takie budowane s± w technologii
+	\emph{ethernet}; coraz czê¶ciej jest stosowana tak¿e ³±czno¶æ
+	bezprzedowodowa w standardach \emph{802.11a/b/g}.\\
+ 
+\section{Sieæ osiedlowa}
+	G³ówn± ide± takiej sieci jest
+	maksymalna redukcja ceny przy zachowaniu akceptowalnej jako¶ci.
+	W tym celu operator sieci wykupuje ³±cze o wysokiej przepustowo¶ci
+	i udostêpnia je u¿ytkownikom. Jednym z wa¿niejszych zagadnieñ jest
+	taki podzia³ pasma
+	transmisyjnego miêdzy u¿ytkowników, aby komfort korzystania z sieci
+	by³ proporcjonalny do wysoko¶ci abonamentu.\\
+ 
+\section{Uwierzytelnianie}
+	Aby operator sieci móg³ zapewniæ abonentom spersonalizowane us³ugi
+	(np. QoS), niezbêdne staje siê opracowanie mechanizmu pozwalaj±cego
+	znale¼æ odpowied¼ na pytanie - \emph{do jakiego abonenta nale¿y
+	wskazany komputer?}\\
+	
+	Jest to problem uwierzytelnia i autoryzacji. W chwili obecnej,
+	najpopularniejsz± form± uwierzytelniania u¿ytkowników w sieciach
+	lokalnych jest metoda \emph{IP-MAC}.\\
+ 
+\section{Podstawowe pojêcia}
+	FIXME: Tutaj bêdzie opisane:
+	\begin{itemize}
+		\item co to jest adres IP
+		\item co to jest adres MAC
+	\end{itemize}
+ 
+\section{Uwierzytelnianie IP-MAC}
+	Ka¿dy komputer w sieci ma unikalny adres IP. Baza adresów IP jest
+	przechowywana w systemie zarz±dzaj±cym sieci±, za¶ ka¿demu numerowi
+	IP jest przypisany abonent. Dodatkowo, aby utrudniæ u¿ytkownikom
+	podszywanie siê pod innych za pomoc± zmiany adresu IP, w bazie
+	przetrzymywane s± tak¿e adresy MAC komputerów. System sprawdza
+	ka¿dy wychodz±cy pakiet pod k±tem zgodno¶ci adresu IP i MAC z
+	warto¶cimi zapisanymi w bazie.\\
+ 
+\section{Uwierzytelnianie IP-MAC}
+	Metodê t± mo¿na ³atwo prze³amaæ:
+	\begin{itemize}
+		\item Adres IP mo¿na zmieniæ
+		\item Adres MAC mo¿na zmieniæ
+		\item \emph{Legalne} adresy IP i MAC mo¿na zdobyæ 
+	\end{itemize}
+ 
+\section{multispoof}
+	Pierwsza aplikacja powstaj±ca w ramach pracy magisterskiej s³u¿y do
+	automatyzacji procesu zmiany adresów IP i MAC w sposób dynamiczny.
+	Dziêki temu u¿ytkownik mo¿e uzyskaæ maksymalnie pasmo transmisyjne
+	równe sumie pasm komputerów, pod które aplikacja siê podszywa.
+	Program zosta³ nazwany roboczo \emph{multispoof}.\\
+ 
+\section{Detekcja}
+	W ramach pracy powstanie równie¿ aplikacja wykrywaj±ca dzia³anie
+	programu \emph{multispoof}.\\
+ 
+\section{multispoof - architektura}
+	Multispoof zostanie zbudowany zgodnie z zasad± modularno¶ci oraz
+	z wykorzystaniem mechanizmów komunikacji miêdzyprocesowej dostêpnej
+	w systemach uniksowych.\\
+	Tak wiêc multispoof nie bêdzie pojedyñczym, monolitycznym procesem,
+	ale zbiorem wyspecjalizowanych procesów wspó³pracuj±cych ze sob±.
+	Wspó³praca odbywaæ siê bêdzie z wykorzystaniem potoków i pamiêci
+	dzielonej oraz ewentualnie sygna³ów (na tym etapie pisania pracy
+	nie jest to jeszcze postanowione).\\
+	
+	Aplikacja bêdzie sk³adaæ siê z dwóch g³ównych czê¶ci:\\
+	\begin{itemize}
+		\item Czê¶æ wykonawcza -- odpowiedzialna za wysy³anie i odbieranie
+			pakietów
+		\item Czê¶æ decyzyjna -- analizuj±ca ruch sieciowy i nadzoruj±ca
+			czê¶æ wykonawcz±.
+	\end{itemize}
+	
+	\subsection{Czê¶æ wykonawcza}
+	\begin{quote}
+	,,There is more unix nature in one line of shell script, than in 10000 lines of c code.''
+\end{quote}
+
+	Wykonawcz± cze¶æ aplikacji multispoof definiuje nastêpuj±cy potok:\\
+	
+	\begin{verbatim}
+	# rx eth0 | mspoof | tx eth0
+	\end{verbatim}
+	
+	\begin{description}
+	\item{rx} Program, którego zadaniem jest nas³uchiwanie na wskazanym
+			interfejsie sieciowym. Przechwycone pakiety s± wypisywane
+			na standardowe wyj¶cie w postaci heksadecymalnej (tekstowej).
+			Ka¿da linia wyj¶cia odpowiada jednemu pakietowi.
+		\item{tx} Program czytaj±cy pakiety ze standardowego wej¶cia
+			w formacie jak powy¿ej. Po odczytaniu pakietu jest on wysy³any
+			przez wskazany interfejs sieciowy.
+		\item{mspoof} Program ³±cz±cy standardowe wej¶cie i wyj¶cie
+			z interfejsem wirtualnym tap. Pakiety wczytywane z wej¶cia s±
+			wysy³ane na interfejs tap, za¶ pakiety odebrane z tego interfejsu
+			s± wypisywane na standardowe wyj¶cie. Program jest odpowiedzialny
+			tak¿e za modyfikacje pakietów\footnote{Byæ mo¿e, za modyfikacjê
+			pakietów bêd± odpowiedzialne osobne programy, umieszczone
+			w ¶rodku potoku -- na tym etapie nie jest to jeszcze
+			postanowione}. Obs³uga wej¶cia/wyj¶cia
+			jest realizowana z zachowaniem tekstowego formatu pakietu.
+	\end{description}
+
+	Program mspoof korzysta tak¿e z obszaru pamiêci dzielonej, w której
+	przetrzymywana jest baza hostów. Przed wys³aniem ka¿dego pakietu,
+	mspoof modyfikuje jego ¼ród³owy adres MAC, zgodnie z t± baz±.\\
+
+	Dziêki zastosowaniu wielu wyspecjalizowanych procesów oraz tekstowemu
+	formatowi mo¿liwe jest ³atwiejsze analizowanie dzia³ania programu
+	oraz wykrywanie b³êdów. Format tekstowy pozwala tak¿e na u¿ywanie
+	popularnych narzêdzi uniksowych, które mog± byæ umieszczane
+	w potoku i wp³ywaæ na przetwarzanie pakietów.
+	
+	\subsection{Czê¶æ decyzyjna}
+	
+	Cze¶æ decyzyjna aplikacji bêdzie sk³adaæ siê z dwóch komponentów.
+	\begin{description}
+		\item{scanner} Program wysy³aj±cy pakiety próbne.
+		\item{detector} Program nas³uchuj±cy odpowiedzi.
+	\end{description}
+ 
+	Program bêd± ze sob± wspó³pracowaæ oraz modyfikowaæ wspóln± bazê
+	hostów, u¿ywan± przez czê¶æ wykonawcz±.
+
+\section{Plan realizacji pracy}
+\begin{enumerate}
+	\item Zapoznanie siê z technologiami, które bêd±
+		u¿ywane w pracy. Napisanie programów typu \emph{hello world}
+		dla ka¿dej z wykorzystywanych bibliotek i interfejsów.
+	\item Zmodyfikowanie biblioteki libpcap, tak aby by³o mo¿liwe
+		rozró¿nienie kierunku transmisji przechwyconych pakietów.
+	\item Stworzenie uproszczonej czê¶ci wykonawczej -- z za³o¿eniami
+		nie korzystania z bazy hostów i nie modyfikowania pakietów.
+	\item Napisanie funkcji i/lub narzêdzi umo¿liwiaj±cych ³atwy
+		dostêp do bazy hostów.
+	\item Stworzenie podstawowej wersji czê¶ci decyzyjnej.
+	\item Zmodyfikowanie cze¶ci wykonawczej tak, aby pakiety by³y
+		modyfikowane zgodnie z zawarto¶ci± bazy hostów.
+	\item Napisanie programów i/lub skryptów odpowiedzialnych za
+		inicjalizowanie i koñczenie pracy programu, tzn. ustawiaj±cych
+		regu³y firewall i nat, trasy routingu, filtrowanie arp itd.
+	\item Testowanie aplikacji oraz mierzenie skuteczno¶ci dzia³ania.
+		Udokumentowanie uzyskanych efektów.
+	\item Stworzenie systemu wykrywania aplikacji multispoof.
+		
+\end{enumerate}
+
+	Na tym etapie nie ma jeszcze opracowanej architektury systemu
+	wykrywania aplikacji multispoof. W zwi±zku z tym, ¿e system ten
+	mo¿e kryæ wiele niewiadomych, nie zosta³y opracowane punkty
+	okre¶laj±ce plan jego tworzenia. Na pewno pojawi± siê one na
+	dalszym etapie pisania pracy.
+
+\section{Problemy do pokonania}
+	\begin{itemize}
+		\item Mo¿na podszywaæ siê tylko pod komputery które s± aktualnie
+			wy³±czone
+		\item Mo¿na podszywaæ siê tylko pod komputery, które maj± dostêp
+			do Internetu
+		\item Podszywanie siê powinno byæ trudna do wykrycia
+		\item Problemy techniczne
+			\begin{itemize}
+				\item libpcap - direction patch
+				\item blokowanie ruchu na interfejsie fizycznym
+			\end{itemize}
+	\end{itemize}
+ 
+\end{document}
