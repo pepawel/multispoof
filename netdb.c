@@ -244,6 +244,7 @@ serve_connections(int serversocket)
 	return 1;
 }
 
+/* Signal handler - removes socket and frees resources. */
 void
 clean_up(int sig)
 {
@@ -308,8 +309,7 @@ main(int argc, char* argv[])
 	/* Clean up */
 	clean_up(-1);
 
-	/* If control reach this code fragment then it is error
-	 * for sure, because serve_connections() returned. */
+	/* clean_up() doesn't return so this code never executes */
 	return 1;
 }
 
