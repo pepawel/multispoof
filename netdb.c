@@ -16,7 +16,8 @@
 /* FIXME: limit number of connection to prevent fd_set overflow */
 																 
 /* FIXME: this function is copied from glib source (because I use
- * 				old version of glib, which doesn't have it) */
+ * 				old version of glib, which doesn't have it). */
+#if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 6))
 guint
 g_strv_length (gchar **str_array)
 {
@@ -29,6 +30,7 @@ g_strv_length (gchar **str_array)
 
   return i;
 }
+#endif
 																 
 int populate_fd_set(GSList *list, fd_set *fds_pointer)
 {
