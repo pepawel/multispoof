@@ -1,0 +1,10 @@
+#!/bin/sh
+SOCKET="netdbsocket"
+rm -f $SOCKET
+./netdb -s $SOCKET &
+while [ ! -S $SOCKET ]
+do
+	sleep 0.1
+done
+echo "FIXME: now can launch mspoof pipeline"
+

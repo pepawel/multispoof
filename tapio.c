@@ -70,6 +70,7 @@ main(int argc, char **argv)
 
 			/* Wait for data on descriptors */
 			error = 0;
+			max_fd = max(tap_fd, stdin_fd) + 1;
 			while(1)
 			{
 				FD_ZERO(&fds);
