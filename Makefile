@@ -12,6 +12,7 @@ rx: rx.o rx-printpkt.o
 tx: tx.o tx-getpkt.o
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
 cmac: cmac.o tx-getpkt.o rx-printpkt.o ndb-client.o
+test-netdb: test-netdb.o ndb-client.o
 cs:
 	cscope -bR
 setup:
