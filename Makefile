@@ -21,15 +21,22 @@ defmac:
 sniff:
 	sudo tcpdump -eni tap0
 setup:
-	sudo ip link set addr 1:2:3:4:5:6 dev tap0
-	sudo ip addr add 10.0.0.1/24 dev tap0
+	sudo ip link set addr 55:55:55:55:55:55 dev tap0
+	sudo killall dhclient-2.2.x
+	sudo ip addr del 192.168.64.44/24 dev eth0
+	sudo ip addr add 192.168.64.44/24 dev tap0
 	sudo ip link set dev tap0 up
-	sudo ip route add 10.0.1.0/24 dev tap0
-	sudo ip route add 10.0.2.0/24 dev tap0
-	sudo ip route add 10.0.3.0/24 dev tap0
-	sudo arp -i tap0 -s 10.0.0.2 a:b:c:d:e:f
+	sudo arp -i tap0 -s 192.168.64.200 00:00:00:00:00:02
+	sudo ip route add default via 192.168.64.200
 clean:
-	rm -f *.o tx rx tapio netdb cmac test-netdb cscope.out netdbsocket
+	rm -f *.o *.c~ *.h~ tx rx tapio netdb cmac test-netdb \
+	cscope.out netdbsocket
+indent:
+	# GNU indent style, but -nbad subsitituted with -bad,
+	# and using -bli0 instead of -bli2
+	indent *.c *.h -bad -bap -nbc -bbo -bl -bli0 -bls -ncdb -nce -cp1 \
+	-cs -di2 -ndj -nfc1 -nfca -hnl -i2 -ip5 -lp -pcs -nprs -psl -saf \
+	-sai -saw -nsc -nsob
 dist:
 	# Prevent overwriting already released tarball
 	test ! -e ${NAME}.tar.gz

@@ -2,7 +2,7 @@
 #define _NETHEADERS_H_
 
 #ifndef ETHER_ADDR_LEN
-#include <net/ethernet.h> /* ETHER_ADDR_LEN */
+#include <net/ethernet.h>	/* ETHER_ADDR_LEN */
 #endif
 
 /* Ethernet header */
