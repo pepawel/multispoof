@@ -1,10 +1,5 @@
 #include <stdio.h>
-#include <sys/types.h> /* socket */
-#include <sys/socket.h> /* socket, inet_ntoa */
-#include <sys/un.h>
-#include <string.h> /* strerror */
-#include <errno.h> /* errno */
-#include <glib.h> /* g_strsplit */
+#include <glib.h> /* g_free */
 #include <net/ethernet.h> /* ETHER_ADDR_LEN */
 #include <netinet/in.h> /* struct in_addr, inet_ntoa */
 #include <arpa/inet.h> /* inet_ntoa */
@@ -15,26 +10,7 @@
 #include "common.h"
 #include "rx-printpkt.h"
 #include "tx-getpkt.h"
-
-/* FIXME: this function is copied from glib source (because I use
- * 				old version of glib, which doesn't have it). */
-#if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 6))
-#ifndef _GLIB_HACK_
-#define _GLIB_HACK_
-guint
-g_strv_length (gchar **str_array)
-{
-  guint i = 0;
-
-  g_return_val_if_fail (str_array != NULL, 0);
-
-  while (str_array[i])
-    ++i;
-
-  return i;
-}
-#endif
-#endif
+#include "ndb-client.h"
 
 /* FIXME: move this structs to separate file (used in rx and cmac) */
 
@@ -73,46 +49,9 @@ struct sniff_ip
 
 char *p_mode;
 
-/* Executes command with arg on netdb using s socket, allocates out_buf
- * for reply. If you want to execute command with multiple arguments
- * pass them as one, space separated string.
- * Returns 1 on success, 0 on error, -1 on protocol error.
- * NOTE: For convenience, out_buf is allocated always - even on
- *       protocol error. */
-int execute_command(s, out_buf, command, arg)
-	FILE *s;
-	char **out_buf;
-	char *command;
-	char *arg;
-{
-	static char tmp_buf[128];
-	gchar **tab;
-	int result;
-	
-	fprintf(s, "%s %s\n", command, arg);
-	fflush(s);
-	fgets(tmp_buf, sizeof(tmp_buf), s);
-	tab = g_strsplit(tmp_buf, " ", 2);
-	if (g_strv_length(tab) < 2)
-	{
-		*out_buf = g_strdup("Protocol error");
-		result = -1;
-	}
-	else
-	{
-		*out_buf = g_strdup(tab[1]);
-		g_strfreev(tab);
-		g_strstrip(*out_buf);
-	
-		result = (tmp_buf[0] == '+' ? 1 : 0);
-	}
-	return result;
-}
-
-/* Changes mac in packet (of packet_s size) using established
- * connection s to netdb daemon.
+/* Changes mac in packet (of packet_s size).
  * Returns 1 on success, -1 otherwise. */
-int change_mac(FILE *s, u_char *packet, u_int16_t packet_s)
+int change_mac(u_char *packet, u_int16_t packet_s)
 {
 	char *command;
 	char *ip_str;
@@ -141,7 +80,7 @@ int change_mac(FILE *s, u_char *packet, u_int16_t packet_s)
 
 	/* Get mac from netdb */
 	command = "getmac";
-	ret = execute_command(s, &buf, command, ip_str);
+	ret = execute_command(&buf, command, ip_str);
 	if (1 == ret)
 	{
 		/* Convert mac in string form to array of bytes */
@@ -166,11 +105,8 @@ main(int argc, char *argv[])
 	u_char packet[MAX_PACKET_SIZE];
 	u_int16_t packet_s;
 	int ret;
-	int sfd, len;
-	struct sockaddr_un a;
 	char *socketname;
-	FILE *s;
-	char tmp[128];
+	char *msg;
 
 	socketname = "netdbsocket";
 	p_mode = "change"; /* FIXME: use command line switches to set mode*/
@@ -179,29 +115,12 @@ main(int argc, char *argv[])
 	 *        - this will simplify cmac algorithm */
 
 	/* Connect to netdb */
-	sfd = socket(PF_UNIX, SOCK_STREAM, 0);
-	if (-1 == sfd)
-	{
-		fprintf(stderr, "%s (%s): socket: %s\n",
-						PNAME, p_mode, strerror(errno));
-		return 1;
-	}
-
-	a.sun_family = AF_UNIX;
-	len = sizeof(a.sun_path);
-	strncpy(a.sun_path, socketname, len);
-	
-	ret = connect(sfd, (struct sockaddr *) &a, len);
+	ret = ndb_init(socketname, &msg);
 	if (-1 == ret)
 	{
-		fprintf(stderr, "%s (%s): connect: %s\n",
-						PNAME, p_mode, strerror(errno));
+		fprintf(stderr, "%s (%s): ndb_init: %s\n", PNAME, p_mode, msg);
 		return 1;
 	}
-
-	s = fdopen(sfd, "r+");
-	/* Get welcome message */
-	fgets(tmp, sizeof(tmp), s);
 
 	while(1)
 	{
@@ -212,11 +131,11 @@ main(int argc, char *argv[])
 		}
 		else
 		{
-			ret = change_mac(s, packet, packet_s);
+			ret = change_mac(packet, packet_s);
 			if (ret == 1) print_packet(packet, packet_s);
 		}
 	}
 
-	fclose(s);
+	ndb_cleanup();
 	return 1;
 }
