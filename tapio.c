@@ -1,4 +1,4 @@
-#define PNAME "mspoof"
+#define PNAME "tapio"
 
 #include <stdio.h>
 #include <string.h>

@@ -3,8 +3,8 @@ CFLAGS=-ggdb -Wall
 LDFLAGS=-lnet -lpcap
 VERSION=`darcs chan | egrep "\ \ tagged" | head -n 1 | cut -d " " -f 4`
 NAME=multispoof-${VERSION}
-all: mspoof rx tx
-mspoof: mspoof.o rx-printpkt.o tx-getpkt.o
+all: tapio rx tx
+tapio: tapio.o rx-printpkt.o tx-getpkt.o
 rx: rx.o rx-printpkt.o
 tx: tx.o tx-getpkt.o
 cs:
@@ -18,7 +18,7 @@ setup:
 	ip route add 10.0.3.0/24 dev tap0
 	arp -i tap0 -s 10.0.0.2 a:b:c:d:e:f
 clean:
-	rm -f *.o tx rx mspoof cscope.out
+	rm -f *.o tx rx tapio cscope.out
 dist:
 	test ! -e ${NAME}.tar.gz
 	cd doc && make clean
