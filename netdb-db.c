@@ -39,6 +39,15 @@ db_add(char* ip, char* mac)
 		return -1;
 }
 
+/* Removes given ip from db. Return 1 if ip was found and removed,
+ * -1 otherwise. */
+int
+db_remove(char* ip)
+{
+	gboolean ret = g_hash_table_remove(db, ip);
+	return (ret ? 1 : -1);
+}
+
 /* Returns mac for a given ip, or NULL if not found.
  * Returned string points to global hash table and
  * should not be freed. */

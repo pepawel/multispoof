@@ -10,7 +10,7 @@ all: tapio rx tx netdb
 tapio: tapio.o rx-printpkt.o tx-getpkt.o
 rx: rx.o rx-printpkt.o
 tx: tx.o tx-getpkt.o
-netdb: netdb.o netdb-op.o netdb-db.o
+netdb: netdb.o netdb-op.o netdb-db.o validate.o
 cs:
 	cscope -bR
 setup:
