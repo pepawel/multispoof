@@ -1,4 +1,0 @@
-To test performance of multispoof components use provided
-test programs:
-
-test-netdb - tests communication with netdb

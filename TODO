@@ -1,5 +1,0 @@
-netdb:
-- implement connection limit
-- fix bug which shows when there is too much input data
-- when tx cannot start, pipeline should be stopped, but
-  it isn't - why?

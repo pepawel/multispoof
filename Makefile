@@ -37,7 +37,6 @@ dist:
 	# otherwise it would be deleted
 	test ! -e ${CHANGELOG_HACK}
 	# Clean
-	cd doc && make clean
 	make clean
 	# Create changelog, create release, delete changelog
 	darcs changes > ${CHANGELOG_HACK}
