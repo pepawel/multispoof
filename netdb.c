@@ -7,6 +7,7 @@
 #include <fcntl.h> /* fcntl */
 #include <sys/time.h> /* select */
 #include <glib.h>
+#include <signal.h>
 
 #include "netdb.h"
 #include "netdb-db.h"
@@ -31,14 +32,18 @@ g_strv_length (gchar **str_array)
   return i;
 }
 #endif
-																 
+
+/* Global variables, to make clean_up function work
+ * when called from signal handling routine. */
+int serversocket; /* Socket for accepting new clients */
+char* socketname = "netdbsocket"; /* File name of the socket */
+
 int populate_fd_set(GSList *list, fd_set *fds_pointer)
 {
 	GSList *li;
 	/* FIXME: debug */
 	for (li = list; NULL != li; li = li->next)
 	{
-		printf("added fd %d to fd_set\n", fileno(li->data));
 		FD_SET(fileno(li->data), fds_pointer);
 	}
 	return 1;
@@ -69,14 +74,14 @@ accept_and_add(GSList **out_list, int serversocket)
 	clientsocket = accept(serversocket, NULL, NULL);
 	if (clientsocket == -1)
 	{
-		perror("accept");
+		perror("netdb: accept");
 		return -1;
 	}
 
 	s = fdopen(clientsocket, "r+");
 	if (s == NULL)
 	{
-		perror("fdopen");
+		perror("netdb: fdopen");
 		return -1;
 	}
 	/* Adding opened connection to list (FILE is pointer,
@@ -195,7 +200,7 @@ serve_connections(int serversocket)
 		ret = select(max_fd, &fds, NULL, NULL, NULL);
 		if (-1 == ret)
 		{
-			perror("select");
+			perror("netdb: select");
 			return -1;
 		}
 		else if (0 == ret)
@@ -239,20 +244,34 @@ serve_connections(int serversocket)
 	return 1;
 }
 
+void
+clean_up(int sig)
+{
+	int ret;
+
+	db_free();
+	close(serversocket);
+	
+	ret = unlink(socketname);
+	if (ret == -1)
+	{
+		perror("netdb: unlink");
+	}
+	exit(0);
+}
+
 int
 main(int argc, char* argv[])
 {
 	/* socket stuff */
-	int serversocket;
 	struct sockaddr_un a;
 	int ret;
 	int len;
-	char* socketname = "netdbsocket";
 	
 	serversocket = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (serversocket == -1)
 	{
-		perror("socket");
+		perror("netdb: socket");
 		return 1;
 	}
 
@@ -263,32 +282,34 @@ main(int argc, char* argv[])
 	ret = bind(serversocket, (struct sockaddr *) &a, len);
 	if (ret == -1)
 	{
-		perror("bind");
+		perror("netdb: bind");
 		return 1;
 	}
 	
 	ret = listen(serversocket, 3);
 	if (ret == -1)
 	{
-		perror("listen");
+		perror("netdb: listen");
 		return 1;
 	}
 
 	/* Create db */
 	db_init();
-	
+
+	/* Catch the signal which could stop the process */
+	signal(SIGTERM, clean_up);
+	signal(SIGINT, clean_up);
+	signal(SIGQUIT, clean_up);
+	signal(SIGABRT, clean_up);
+
+	/* Serve connections and return on error */
 	serve_connections(serversocket);
 	
 	/* Clean up */
-	db_free();
-	close(serversocket);
-	
-	ret = unlink(socketname);
-	if (ret == -1)
-	{
-		perror("unlink");
-		return 1;
-	}
+	clean_up(-1);
 
-	return 0;
+	/* If control reach this code fragment then it is error
+	 * for sure, because serve_connections() returned. */
+	return 1;
 }
+

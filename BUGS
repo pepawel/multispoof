@@ -1,3 +1,6 @@
 netdb:
 - when there more than one space between command arguments
   it is threated as argument.
+- when terminating process in serve_connections, program
+	should free linked list of connections and close connections
+	itself.
