@@ -1,8 +1,9 @@
-# FIXME: don't link unnessesary libraries
-# "+= " make it possible to specify additional parameters:
-# LDLAGS=-static make
 CFLAGS+= -ggdb -Wall ${shell pkg-config --cflags glib-2.0}
-LDFLAGS+= -lnet -lpcap ${shell pkg-config --libs glib-2.0}
+
+LIBNET=-lnet
+PCAP=-lpcap
+GLIB=${shell pkg-config --libs glib-2.0}
+
 VERSION=`darcs chan | egrep "\ \ tagged" | head -n 1 | cut -d " " -f 4`
 NAME=multispoof-${VERSION}
 # Dirty hack to make changelog available in tarball
@@ -12,12 +13,21 @@ CHANGELOG_HACK=_darcs/current/Changelog
 # Program files
 all: tapio rx tx netdb cmac arprep
 tapio: tapio.o printpkt.o getpkt.o
+	${CC} ${LDFLAGS} $+ -o $@
 rx: rx.o printpkt.o
+	${CC} ${LDFLAGS} ${PCAP} $+ -o $@
 tx: tx.o getpkt.o
+	${CC} ${LDFLAGS} ${LIBNET} $+ -o $@
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
+# FIXME: remove dependency on libnet from cmac
 cmac: cmac.o getpkt.o printpkt.o ndb-client.o validate.o
+	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
+# FIXME: remove dependency on libnet from arprep
 arprep: arprep.o getpkt.o printpkt.o ndb-client.o
+	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 test-netdb: test-netdb.o ndb-client.o
+	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 	
 clean:
 	rm -f *.o *.c~ *.h~ tx rx tapio netdb cmac test-netdb \
