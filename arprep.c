@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>		/* memcpy */
 #include <net/ethernet.h>	/* ETHER_ADDR_LEN */
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */

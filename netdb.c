@@ -3,7 +3,8 @@
 #include <sys/un.h>
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>		/* unlink, select */
+#include <unistd.h>		/* unlink, select, exit */
+#include <stdlib.h>		/* unlink, select, exit */
 #include <fcntl.h>		/* fcntl */
 #include <sys/time.h>		/* select */
 #include <glib.h>

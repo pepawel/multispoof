@@ -40,9 +40,9 @@ setup:
 lb:
 	sudo iptables -t nat -F
 	sudo iptables -t nat -X
-	sudo iptables -t nat -A POSTROUTING -m nth --every 2 \
+	sudo iptables -t nat -A POSTROUTING -o tap0 -m nth --every 2 \
 	--packet 0 -j SNAT --to-source 192.168.64.44
-	sudo iptables -t nat -A POSTROUTING -m nth --every 2 \
+	sudo iptables -t nat -A POSTROUTING -o tap0 -m nth --every 2 \
 	--packet 1 -j SNAT --to-source 192.168.64.3
 indent:
 	# GNU indent style, but -nbad subsitituted with -bad,

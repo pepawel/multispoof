@@ -1,4 +1,5 @@
 #include <glib.h>
+#include <string.h>		/* strcmp */
 
 /* Global hash table for storing ip-mac info, indexed by ip.
  * Ip and mac stored as strings. */

@@ -1,4 +1,5 @@
 #include <glib.h>
+#include <string.h>		/* strlen */
 #include "netdb.h"		/* command_t, netdb_func_t */
 #include "netdb-db.h"		/* command_t, netdb_func_t */
 #include "validate.h"
