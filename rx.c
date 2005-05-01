@@ -46,9 +46,10 @@ void
 usage ()
 {
   fprintf (stderr, "Usage:\n");
-  fprintf (stderr, "\t%s iface filter\n", PNAME);
+  fprintf (stderr, "\t%s iface filter name\n", PNAME);
   fprintf (stderr, "Where iface is a interface to sniff on,\n");
-  fprintf (stderr, "      filter is a pcap filter.\n");
+  fprintf (stderr, "      filter is a pcap filter and name\n");
+  fprintf (stderr, "      is a string which shows in messages.");
   return;
 }
 
@@ -66,9 +67,10 @@ main (int argc, char **argv)
   bpf_u_int32 maskp;		/* subnet mask */
   bpf_u_int32 netp;		/* ip */
   char *filter_app;
+  char *par_name;		/* name which shows in messages in parenthesis */
 
   /* Set device for sniffing */
-  if (argc < 3)
+  if (argc < 4)
   {
     usage ();
     exit (1);
@@ -76,35 +78,37 @@ main (int argc, char **argv)
 
   dev = argv[1];
   filter_app = argv[2];
+  par_name = argv[3];
   pcap_lookupnet (dev, &netp, &maskp, errbuf);
 
   /* Print device to the user */
-  fprintf (stderr, "%s: listening on %s\n", PNAME, dev);
+  fprintf (stderr, "%s (%s): listening on %s\n", PNAME, par_name, dev);
 
   /* Open the device so we can spy */
   descr = pcap_open_live (dev, BUFSIZ, 1, 0, errbuf);
   if (descr == NULL)
   {
-    fprintf (stderr, "%s: pcap_open_live: %s\n", PNAME, errbuf);
+    fprintf (stderr, "%s (%s): pcap_open_live: %s\n",
+	     PNAME, par_name, errbuf);
     exit (1);
   }
 
   /* Set direction - we are interested only in incoming packets */
   if (-1 == pcap_direction (descr, D_IN))
   {
-    fprintf (stderr, "%s: pcap_direction error\n", PNAME);
+    fprintf (stderr, "%s (%s): pcap_direction error\n", PNAME, par_name);
     exit (1);
   }
 
   /* Apply the rules */
   if (-1 == pcap_compile (descr, &fp, filter_app, 0, netp))
   {
-    fprintf (stderr, "%s: pcap_compile error\n", PNAME);
+    fprintf (stderr, "%s (%s): pcap_compile error\n", PNAME, par_name);
     exit (1);
   }
   if (-1 == pcap_setfilter (descr, &fp))
   {
-    fprintf (stderr, "%s: pcap_setfilter error\n", PNAME);
+    fprintf (stderr, "%s (%s): pcap_setfilter error\n", PNAME, par_name);
     exit (1);
   }
 

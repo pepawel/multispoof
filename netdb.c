@@ -220,7 +220,7 @@ serve_connections (int serversocket)
 
   while (1)
   {
-    fprintf (stderr, "%s: (debug) loop\n", PNAME);
+    /* fprintf (stderr, "%s: (debug) loop\n", PNAME); */
     FD_ZERO (&fds);
     FD_SET (serversocket, &fds);
     populate_fd_set (fd_list, &fds);
@@ -242,14 +242,14 @@ serve_connections (int serversocket)
       if (FD_ISSET (serversocket, &fds))
       {
 	/* New connection */
-	fprintf (stderr, "%s: (debug) new connection\n", PNAME);
+	/* fprintf (stderr, "%s: (debug) new connection\n", PNAME); */
 	accept_and_add (&fd_list, serversocket);
       }
       else
       {
 	/* New data on existing connections.
 	 * Need to find out which socket is ready to be read */
-	fprintf (stderr, "%s: (debug) data\n", PNAME);
+	/* fprintf (stderr, "%s: (debug) data\n", PNAME); */
 	for (li = fd_list; NULL != li; li = li->next)
 	{
 	  if (FD_ISSET (fileno (li->data), &fds))

@@ -1,0 +1,83 @@
+#!/bin/sh
+
+COMPONENTS_DIR=.
+REAL_IFACE=eth1
+TAP_IFACE=tap0
+NDB_SOCKET="netdbsocket"
+
+PATH=$COMPONENTS_DIR:$PATH
+
+function clean_up
+{
+  trap 15
+  # FIXME: restore network configuration for $REAL_IFACE
+  kill -SIGTERM -$$
+}
+
+function spoof_pipeline
+{
+  local IFACE=$1
+  rx $IFACE "ip and not ether broadcast" tapio | cmac unspoof | tapio \
+  | cmac spoof | tx $IFACE tapio
+}
+
+function arprep_pipeline
+{
+  local IFACE=$1
+  rx $IFACE "arp" arprep | arprep $NDB_SOCKET | tx $IFACE arprep
+}
+
+function detector_pipeline
+{
+  echo detector: FIXME: implement me.
+}
+
+function natman
+{
+  echo natman: FIXME: implement me.
+}
+
+function register_mac
+{
+  local IFACE=$1
+  local MAC=`ip link|grep -A 1 $IFACE | tail -n 1 | cut -d ' ' -f 6`
+  if [ ! -z "$MAC" ]
+  then
+    echo "setvar defmac $MAC" | socat UNIX-CONNECT:$NDB_SOCKET - \
+    > /dev/null
+  else
+    echo "Problem getting mac address of interface $IFACE."
+    kill $$
+  fi
+}
+
+# FIXME: get address from real device
+function setup_ifaces
+{
+  local REAL=$1
+  local TAP=$2
+  local CIDR="192.168.64.33/24"
+  local GATEWAY_IP="192.168.64.200"
+  local GATEWAY_MAC="00:00:00:00:00:02"
+  ip addr flush dev $REAL 2> /dev/null
+  ip addr add $CIDR dev $TAP
+  ip link set $TAP up
+  arp -i $TAP -s $GATEWAY_IP $GATEWAY_MAC
+  ip route add default via $GATEWAY_IP
+}
+
+echo "multispoof: PID $$"
+
+trap clean_up 15 2
+
+netdb &
+sleep 0.7 # netdb opening socket FIXME: more elegant solution
+spoof_pipeline $REAL_IFACE &
+arprep_pipeline $REAL_IFACE &
+detector_pipeline $REAL_IFACE &
+natman $TAP_IFACE &
+sleep 0.7 # tapio creating tap device FIXME: more elegant solution
+register_mac $TAP_IFACE
+setup_ifaces $REAL_IFACE $TAP_IFACE
+# Wait for all children processes
+wait

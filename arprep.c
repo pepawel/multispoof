@@ -122,7 +122,10 @@ create_arp_reply (reply, reply_s, request, request_s)
   ret = ndb_execute_getmac (mac, ip);
   if (-1 == ret)
   {
-    fprintf (stderr, "debug: MAC for %s not found\n", inet_ntoa (ip));
+    /*
+       fprintf (stderr, "%s: debug: MAC for %s not found\n",
+       PNAME, inet_ntoa (ip));
+     */
     return -1;
   }
   else

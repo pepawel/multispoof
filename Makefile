@@ -36,17 +36,6 @@ clean:
 # Developement targets
 cs:
 	cscope -bR
-defmac:
-	echo "setvar defmac `ip link|grep -A 1 tap0|tail -n 1 \
-	      | cut -d ' ' -f 6`" | socat UNIX-CONNECT:netdbsocket -
-setup:
-	sudo killall dhclient || true
-	sudo ip addr del 192.168.64.44/24 dev eth0 || true
-	sudo ip addr add 192.168.64.44/24 dev tap0 || true
-	sudo ip link set dev tap0 up || true
-	sudo arp -i tap0 -s 192.168.64.200 00:00:00:00:00:02 || true
-	sudo ip route del default 2> /dev/null || true
-	sudo ip route add default via 192.168.64.200 || true
 lb:
 	sudo iptables -t nat -F
 	sudo iptables -t nat -X

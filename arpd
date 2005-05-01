@@ -1,3 +1,0 @@
-#!/bin/sh
-PATH=$PATH:.
-rx eth0 arp | arprep | tx eth0

@@ -1,4 +1,0 @@
-#!/bin/sh
-#make defmac || exit 1
-PATH=$PATH:.
-rx eth0 ip | cmac unspoof | tapio | cmac spoof | tx eth0

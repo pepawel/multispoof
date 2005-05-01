@@ -14,8 +14,9 @@ void
 usage ()
 {
   fprintf (stderr, "Usage:\n");
-  fprintf (stderr, "\t%s iface\n", PNAME);
-  fprintf (stderr, "Where iface is a interface to inject packets into.\n");
+  fprintf (stderr, "\t%s iface name\n", PNAME);
+  fprintf (stderr, "Where iface is an interface to inject packets\n");
+  fprintf (stderr, "into, and name is a string which shows in messages.\n");
   return;
 }
 
@@ -72,22 +73,26 @@ main (int argc, char **argv)
   char errbuf[LIBNET_ERRBUF_SIZE];
   int error = 1;
   int ret;
+  char *par_name;
 
-  if (argc < 2)
+  if (argc < 3)
   {
     usage ();
     exit (1);
   }
 
+  par_name = argv[2];
+
   /* Start libnet */
   l = libnet_init (LIBNET_LINK, argv[1], errbuf);
   if (NULL == l)
   {
-    fprintf (stderr, "%s: libnet_init: %s", PNAME, errbuf);
+    fprintf (stderr, "%s (%s): libnet_init: %s", PNAME, par_name, errbuf);
   }
   else
   {
-    fprintf (stderr, "%s: using device %s\n", PNAME, libnet_getdevice (l));
+    fprintf (stderr, "%s (%s): using device %s\n",
+	     PNAME, par_name, libnet_getdevice (l));
 
     error = 0;
     while (1)
@@ -95,7 +100,7 @@ main (int argc, char **argv)
       ret = get_packet (packet, &packet_s);
       if (-1 == ret)
       {
-	fprintf (stderr, "%s: malformed packet\n", PNAME);
+	fprintf (stderr, "%s (%s): malformed packet\n", PNAME, par_name);
       }
       else if (0 == ret)
       {
@@ -116,7 +121,8 @@ main (int argc, char **argv)
 	ret = send_packet (l, packet, packet_s < 60 ? 60 : packet_s);
 	if (-1 == ret)
 	{
-	  fprintf (stderr, "%s: sending failed: %s\n", PNAME, "FIXME");
+	  fprintf (stderr, "%s (%s): sending failed: %s\n",
+		   PNAME, par_name, "FIXME");
 	  error = 1;
 	  break;
 	}
