@@ -286,7 +286,7 @@ clean_up (int sig)
   f = fopen (cachefile, "w");
   if (NULL != f)
   {
-    dump = db_dump ("add %s %s\n");
+    dump = db_dump ("host %s %s\n");
     fprintf (f, dump);
     g_free (dump);
     fclose (f);

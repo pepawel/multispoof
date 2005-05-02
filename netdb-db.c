@@ -1,9 +1,17 @@
 #include <glib.h>
 #include <string.h>		/* strcmp */
+#include <sys/time.h> /* gettimeofday */
+#include <time.h> /* gettimeofday */
+#include <stdlib.h> /* exit */
 
 /* Global hash table for storing ip-mac info, indexed by ip.
  * Ip and mac stored as strings. */
-GHashTable *db;
+GHashTable *db_mac;
+
+/* Same as above, but for last seen time. Time is stored
+ * as integer (you need to call GPOINTER_TO_INT or GINT_TO_GPOINTER
+ * macros to access it) */
+GHashTable *db_time;
 
 /* Variables support */
 typedef struct
@@ -18,13 +26,26 @@ variable_t variable_tab[] = {
   {(char *) NULL, (char *) NULL}
 };
 
-/* Allocate memory for hash table. */
+/* Returns current time in seconds. */
+int
+getcurtime ()
+{
+  struct timeval tv;
+  struct timezone tz;
+  if (-1 == gettimeofday (&tv, &tz))
+    exit(EXIT_FAILURE);
+  return tv.tv_sec;
+}
+
+
+/* Allocate memory for hash tables. */
 void
 db_init ()
 {
-  /* Create hash table and specify functions called at destroing
+  /* Create hash tables and specify functions called at destroing
    * elements to free them. */
-  db = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  db_mac = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  db_time = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   return;
 }
 
@@ -36,7 +57,8 @@ db_free ()
 
   /* There is no need to free elements, because this function will
    * do so automatically (see comment in db_init) */
-  g_hash_table_destroy (db);
+  g_hash_table_destroy (db_mac);
+  g_hash_table_destroy (db_time);
 
   /* Free variables */
   for (i = 0; NULL != variable_tab[i].name; i++)
@@ -46,19 +68,47 @@ db_free ()
   return;
 }
 
-/* Adds given ip and mac pair if ip doesn't exist in hash table yet.
- * If ip already exists returns -1, otherwise returns 1. */
+/* If ip doesn't exist in hash - adds new entry.
+ * If ip do exist, but registered mac is different - updates mac.
+ * If ip do exist and new mac is identical to old one - does nothing.
+ * 
+ * In any of these cases updates last seen time of ip.
+ * 
+ * Return value:
+ * 1 if entry was added,
+ * 2 if mac was updated,
+ * 3 if only last seen time was updated.
+ */
 int
-db_add (char *ip, char *mac)
+db_add_replace_update (char *ip, char *mac)
 {
+  int result = -1;
+  char *old_mac = g_hash_table_lookup (db_mac, ip);
+
   /* Check if entry for this ip already exists */
-  if (NULL == g_hash_table_lookup (db, ip))
+  if (NULL == old_mac)
   {
-    g_hash_table_insert (db, g_strdup (ip), g_strdup (mac));
-    return 1;
+    /* Adding new entry */
+    g_hash_table_insert (db_mac, g_strdup (ip), g_strdup (mac));
+    result = 1;
+  }
+  else if (0 != strcmp (old_mac, mac))
+  {
+    /* Modyfing existing entry */
+    g_hash_table_replace (db_mac, g_strdup (ip), g_strdup (mac));
+    result = 2;
   }
   else
-    return -1;
+  {
+    /* Updating last seen time only */
+    result = 3;
+  }
+
+  /* Update last seen time - FIXME */
+  g_hash_table_replace (db_time, g_strdup (ip),
+			GINT_TO_POINTER (getcurtime ()));
+
+  return result;
 }
 
 /* Removes given ip from db. Return 1 if ip was found and removed,
@@ -66,9 +116,10 @@ db_add (char *ip, char *mac)
 int
 db_remove (char *ip)
 {
-  gboolean ret = g_hash_table_remove (db, ip);
+  gboolean ret1 = g_hash_table_remove (db_mac, ip);
+  gboolean ret2 = g_hash_table_remove (db_time, ip);
 
-  return (ret ? 1 : -1);
+  return ((ret1 && ret2) ? 1 : -1);
 }
 
 /* Returns mac for a given ip, or NULL if not found.
@@ -77,7 +128,19 @@ db_remove (char *ip)
 char *
 db_getmac (char *ip)
 {
-  return g_hash_table_lookup (db, ip);
+  return g_hash_table_lookup (db_mac, ip);
+}
+
+/* Returns last seen time for a given ip, or -1 if not found. */
+int
+db_gettime (char *ip)
+{
+  gpointer tmp, time;
+  int ret = g_hash_table_lookup_extended (db_time, ip, &tmp, &time);
+  if (0 != ret)
+    return getcurtime() - GPOINTER_TO_INT(time);
+  else
+    return -1;
 }
 
 /* Internal struct used by db_dump */
@@ -121,7 +184,7 @@ db_dump (char *format_string)
   dump.str = g_strdup ("");
   dump.format_string = g_strdup (format_string);
 
-  g_hash_table_foreach (db, _db_append, &dump);
+  g_hash_table_foreach (db_mac, _db_append, &dump);
 
   g_free (dump.format_string);
   return dump.str;

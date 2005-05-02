@@ -59,7 +59,7 @@ cmd_getvar (gchar ** tab, guint count, gchar ** out_msg)
 }
 
 int
-cmd_add (gchar ** tab, guint count, gchar ** out_msg)
+cmd_host (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *mac, *ip;
   int ret;
@@ -80,13 +80,17 @@ cmd_add (gchar ** tab, guint count, gchar ** out_msg)
       msg = "-ERR Bad mac address\n";
     else
     {
-      ret = db_add (ip, mac);
+      ret = db_add_replace_update (ip, mac);
       g_free (ip);
       g_free (mac);
-      if (-1 == ret)
-	msg = "-ERR Entry already exist\n";
-      else
+      if (1 == ret)
 	msg = "+OK Entry added\n";
+      else if (2 == ret)
+	msg = "+OK Entry updated\n";
+      else if (3 == ret)
+	msg = "+OK Last seen time updated\n";
+      else
+	msg = "-ERR Unknown return code\n";
     }
   }
   *out_msg = g_strdup (msg);
@@ -121,6 +125,37 @@ cmd_remove (gchar ** tab, guint count, gchar ** out_msg)
     }
   }
   *out_msg = g_strdup (msg);
+  return 1;
+}
+
+int
+cmd_gettime (gchar ** tab, guint count, gchar ** out_msg)
+{
+  char *msg, *ip;
+  int time;
+
+  if (count < 2)
+  {
+    msg = g_strdup ("-ERR Too few arguments\n");
+  }
+  else
+  {
+    /* Convert to standard form, catch errors */
+    ip = get_std_ip_str (tab[1]);
+    if (NULL == ip)
+      msg = g_strdup ("-ERR Bad ip address\n");
+    else
+    {
+      time = db_gettime (ip);
+      if (-1 == time)
+	msg = g_strdup_printf ("-ERR Entry for %s not found\n", ip);
+      else
+	msg = g_strdup_printf ("+OK %d\n", time);
+      g_free (ip);
+    }
+  }
+
+  *out_msg = msg;
   return 1;
 }
 
@@ -175,11 +210,13 @@ cmd_dump (gchar ** tab, guint count, gchar ** out_msg)
 command_t commands[] = {
   {"quit", cmd_quit}
   ,
-  {"add", cmd_add}
+  {"host", cmd_host}
   ,
   {"remove", cmd_remove}
   ,
   {"getmac", cmd_getmac}
+  ,
+  {"gettime", cmd_gettime}
   ,
   {"setvar", cmd_setvar}
   ,

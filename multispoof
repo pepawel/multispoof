@@ -37,6 +37,11 @@ function natman
   echo natman: FIXME: implement me.
 }
 
+function conncheck
+{
+  echo conncheck: FIXME: implement me.
+}
+
 function register_mac
 {
   local IFACE=$1
@@ -79,5 +84,6 @@ natman $TAP_IFACE &
 sleep 0.7 # tapio creating tap device FIXME: more elegant solution
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
+conncheck $TAP_IFACE
 # Wait for all children processes
 wait
