@@ -1,5 +1,6 @@
 #include <glib.h>
 #include <string.h>		/* strlen */
+#include <stdlib.h>		/* atoi */
 #include "netdb.h"		/* command_t, netdb_func_t */
 #include "netdb-db.h"		/* command_t, netdb_func_t */
 #include "validate.h"
@@ -98,6 +99,73 @@ cmd_host (gchar ** tab, guint count, gchar ** out_msg)
 }
 
 int
+cmd_enable (gchar ** tab, guint count, gchar ** out_msg)
+{
+  char *msg, *ip;
+  int ret;
+
+  if (count < 2)
+  {
+    msg = "-ERR Too few arguments (ip address needed)\n";
+  }
+  else
+  {
+    /* Check if ip is in correct format, and rewrite
+     * to standard format if possible */
+    ip = get_std_ip_str (tab[1]);
+    if (NULL == ip)
+      msg = "-ERR Bad ip address\n";
+    else
+    {
+      ret = db_change_enabled (ip, 1);
+      g_free (ip);
+      if (-1 == ret)
+	msg = "-ERR Enabling failed - entry not found\n";
+      else if (1 == ret)
+	msg = "+OK Enabling succeeded\n";
+      else
+  msg = "+OK Already enabled\n";
+    }
+  }
+  *out_msg = g_strdup (msg);
+  return 1;
+}
+
+int
+cmd_disable (gchar ** tab, guint count, gchar ** out_msg)
+{
+  char *msg, *ip;
+  int ret;
+
+  if (count < 2)
+  {
+    msg = "-ERR Too few arguments (ip address needed)\n";
+  }
+  else
+  {
+    /* Check if ip is in correct format, and rewrite
+     * to standard format if possible */
+    ip = get_std_ip_str (tab[1]);
+    if (NULL == ip)
+      msg = "-ERR Bad ip address\n";
+    else
+    {
+      ret = db_change_enabled (ip, 0);
+      g_free (ip);
+      if (-1 == ret)
+	msg = "-ERR Disabling failed - entry not found\n";
+      else if (1 == ret)
+	msg = "+OK Disabling succeeded\n";
+      else
+  msg = "+OK Already disabled\n";
+    }
+  }
+  *out_msg = g_strdup (msg);
+  return 1;
+}
+
+
+int
 cmd_remove (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *ip;
@@ -129,10 +197,10 @@ cmd_remove (gchar ** tab, guint count, gchar ** out_msg)
 }
 
 int
-cmd_gettime (gchar ** tab, guint count, gchar ** out_msg)
+cmd_getage (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *ip;
-  int time;
+  time_t time;
 
   if (count < 2)
   {
@@ -146,11 +214,11 @@ cmd_gettime (gchar ** tab, guint count, gchar ** out_msg)
       msg = g_strdup ("-ERR Bad ip address\n");
     else
     {
-      time = db_gettime (ip);
-      if (-1 == time)
+      time = db_getage (ip);
+      if (((time_t) -1) == time)
 	msg = g_strdup_printf ("-ERR Entry for %s not found\n", ip);
       else
-	msg = g_strdup_printf ("+OK %d\n", time);
+	msg = g_strdup_printf ("+OK %d\n", (int) time);
       g_free (ip);
     }
   }
@@ -206,23 +274,51 @@ cmd_dump (gchar ** tab, guint count, gchar ** out_msg)
   return 1;
 }
 
+int
+cmd_listenabled (gchar ** tab, guint count, gchar ** out_msg)
+{
+  char *msg;
+  char *status;
+  int age;
+
+  if (count < 2)
+  {
+    msg = g_strdup ("-ERR Too few arguments\n");
+  }
+  else
+  {
+    age = atoi (tab[1]);
+    msg = db_listenabled (age);
+    status = "+OK Dump complete\n";
+    msg = g_strconcat (msg, status, NULL);
+  }
+  *out_msg = msg;
+  return 1;
+}
+
 /* NULL terminated array of commands */
 command_t commands[] = {
-  {"quit", cmd_quit}
+  {"quit", cmd_quit} /* Closes client connection. */
   ,
-  {"host", cmd_host}
+  {"host", cmd_host} /* Adds, replaces entry. Updates last active. */
   ,
-  {"remove", cmd_remove}
+  {"enable", cmd_enable} /* Sets enabled flag for entry. */
   ,
-  {"getmac", cmd_getmac}
+  {"disable", cmd_disable} /* Unsets enabled flag for entry. */
   ,
-  {"gettime", cmd_gettime}
+  {"remove", cmd_remove} /* Removes entry from db. */
   ,
-  {"setvar", cmd_setvar}
+  {"getmac", cmd_getmac} /* Returns mac of entry. */
   ,
-  {"getvar", cmd_getvar}
+  {"getage", cmd_getage} /* Returns last active age of entry. */
   ,
-  {"dump", cmd_dump}
+  {"setvar", cmd_setvar} /* Sets given variable with given value. */
+  ,
+  {"getvar", cmd_getvar} /* Gets value of given variable. */
+  ,
+  {"dump", cmd_dump} /* Dumps ips and associated mac addresses. */
+  ,
+  {"listenabled", cmd_listenabled} /* Dumps en. ips with age >= given*/
   ,
   {(char *) NULL, (netdb_func_t *) NULL}
 };

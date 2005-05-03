@@ -94,9 +94,10 @@ main (int argc, char **argv)
   }
 
   /* Set direction - we are interested only in incoming packets */
-  if (-1 == pcap_direction (descr, D_IN))
+  if (-1 == pcap_setdirection (descr, D_IN))
   {
-    fprintf (stderr, "%s (%s): pcap_direction error\n", PNAME, par_name);
+    fprintf (stderr, "%s (%s): pcap_setdirection error\n",
+        PNAME, par_name);
     exit (1);
   }
 

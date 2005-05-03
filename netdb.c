@@ -373,6 +373,8 @@ main (int argc, char *argv[])
   /* Ignore SIGPIPE caused by disconnecting user */
   signal (SIGPIPE, SIG_IGN);
 
+  fprintf(stderr, "%s: Listening on %s\n", PNAME, socketname);
+  
   /* Serve connections and return on error */
   serve_connections (serversocket);
 

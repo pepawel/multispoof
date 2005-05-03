@@ -1,17 +1,20 @@
 #include <glib.h>
 #include <string.h>		/* strcmp */
-#include <sys/time.h> /* gettimeofday */
-#include <time.h> /* gettimeofday */
+#include <time.h> /* time */
 #include <stdlib.h> /* exit */
 
-/* Global hash table for storing ip-mac info, indexed by ip.
- * Ip and mac stored as strings. */
-GHashTable *db_mac;
+/* Global hash table for storing host info, indexed by ip.
+ * Ip stored as string. */
+GHashTable *db;
 
-/* Same as above, but for last seen time. Time is stored
- * as integer (you need to call GPOINTER_TO_INT or GINT_TO_GPOINTER
- * macros to access it) */
-GHashTable *db_time;
+/* Host entry in hash table */
+#define MAC_TEXT_SIZE 6*2+5+1
+typedef struct
+{
+  char    mac[MAC_TEXT_SIZE]; /* mac as ":"-separated string */
+  time_t  last_active; /* When the host was last active in seconds */
+  int     enabled; /* Flag set if host is ready to be used */
+} host_entry_t;
 
 /* Variables support */
 typedef struct
@@ -22,30 +25,17 @@ typedef struct
 
 /* Global array of variables */
 variable_t variable_tab[] = {
-  {"defmac", (char *) NULL},
+  {"defmac", (char *) NULL}, /* Default mac address for cmac unspoof */
   {(char *) NULL, (char *) NULL}
 };
 
-/* Returns current time in seconds. */
-int
-getcurtime ()
-{
-  struct timeval tv;
-  struct timezone tz;
-  if (-1 == gettimeofday (&tv, &tz))
-    exit(EXIT_FAILURE);
-  return tv.tv_sec;
-}
-
-
-/* Allocate memory for hash tables. */
+/* Allocate memory for hash table. */
 void
 db_init ()
 {
-  /* Create hash tables and specify functions called at destroing
+  /* Create hash table and specify functions called at destroing
    * elements to free them. */
-  db_mac = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  db_time = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  db = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   return;
 }
 
@@ -57,8 +47,7 @@ db_free ()
 
   /* There is no need to free elements, because this function will
    * do so automatically (see comment in db_init) */
-  g_hash_table_destroy (db_mac);
-  g_hash_table_destroy (db_time);
+  g_hash_table_destroy (db);
 
   /* Free variables */
   for (i = 0; NULL != variable_tab[i].name; i++)
@@ -68,47 +57,81 @@ db_free ()
   return;
 }
 
+/* Allocates memory for new host entry and fills fields with defaults.
+ * Returns host entry. */
+host_entry_t*
+_new_host_entry(char *mac, time_t time, int enabled)
+{
+  host_entry_t *e;
+  e = g_malloc(sizeof(host_entry_t));
+  g_strlcpy(e->mac, mac, MAC_TEXT_SIZE);
+  e->last_active = time;
+  e->enabled = enabled;
+  return e; 
+}
+
 /* If ip doesn't exist in hash - adds new entry.
  * If ip do exist, but registered mac is different - updates mac.
  * If ip do exist and new mac is identical to old one - does nothing.
  * 
- * In any of these cases updates last seen time of ip.
+ * In any of these cases updates last active time of ip.
  * 
  * Return value:
  * 1 if entry was added,
  * 2 if mac was updated,
- * 3 if only last seen time was updated.
+ * 3 if only last active time was updated.
  */
 int
 db_add_replace_update (char *ip, char *mac)
 {
   int result = -1;
-  char *old_mac = g_hash_table_lookup (db_mac, ip);
+  host_entry_t *old_entry = g_hash_table_lookup (db, ip);
 
   /* Check if entry for this ip already exists */
-  if (NULL == old_mac)
+  if (NULL == old_entry)
   {
     /* Adding new entry */
-    g_hash_table_insert (db_mac, g_strdup (ip), g_strdup (mac));
+    g_hash_table_insert (db, g_strdup (ip),
+        _new_host_entry (mac,time(NULL),0));
     result = 1;
   }
-  else if (0 != strcmp (old_mac, mac))
+  else if (0 != strcmp (old_entry->mac, mac))
   {
     /* Modyfing existing entry */
-    g_hash_table_replace (db_mac, g_strdup (ip), g_strdup (mac));
+    g_hash_table_replace (db, g_strdup (ip),
+        _new_host_entry (mac,time(NULL),0));
+    old_entry->last_active = time(NULL);
     result = 2;
   }
   else
   {
     /* Updating last seen time only */
+    old_entry->last_active = time(NULL);
     result = 3;
   }
 
-  /* Update last seen time - FIXME */
-  g_hash_table_replace (db_time, g_strdup (ip),
-			GINT_TO_POINTER (getcurtime ()));
-
   return result;
+}
+
+/* Updates enabled flag in host entry for given ip with given value.
+ * Return -1 on error, >=1 otherwise. */
+int
+db_change_enabled (char *ip, int val)
+{
+  host_entry_t *e = g_hash_table_lookup (db, ip);
+  if (NULL == e)
+  {
+    return -1;
+  }
+  else if (val != e->enabled)
+  {
+    e->enabled = val;
+    return 1;
+  }
+  else
+  {
+    return 2;
+  }
 }
 
 /* Removes given ip from db. Return 1 if ip was found and removed,
@@ -116,10 +139,9 @@ db_add_replace_update (char *ip, char *mac)
 int
 db_remove (char *ip)
 {
-  gboolean ret1 = g_hash_table_remove (db_mac, ip);
-  gboolean ret2 = g_hash_table_remove (db_time, ip);
+  gboolean ret = g_hash_table_remove (db, ip);
 
-  return ((ret1 && ret2) ? 1 : -1);
+  return ret ? 1 : -1;
 }
 
 /* Returns mac for a given ip, or NULL if not found.
@@ -128,19 +150,18 @@ db_remove (char *ip)
 char *
 db_getmac (char *ip)
 {
-  return g_hash_table_lookup (db_mac, ip);
+  host_entry_t *e;
+  e = g_hash_table_lookup (db, ip);
+  return e != NULL ? e->mac : NULL;
 }
 
-/* Returns last seen time for a given ip, or -1 if not found. */
-int
-db_gettime (char *ip)
+/* Returns inactivity age for a given ip, or -1 if not found. */
+time_t
+db_getage (char *ip)
 {
-  gpointer tmp, time;
-  int ret = g_hash_table_lookup_extended (db_time, ip, &tmp, &time);
-  if (0 != ret)
-    return getcurtime() - GPOINTER_TO_INT(time);
-  else
-    return -1;
+  host_entry_t *e;
+  e = g_hash_table_lookup (db, ip);
+  return e != NULL ? (time(NULL) - e->last_active) : -1;
 }
 
 /* Internal struct used by db_dump */
@@ -152,14 +173,14 @@ typedef struct
 
 /* Internal function to append entries to dump string */
 static void
-_db_append (gpointer ipp, gpointer macp, gpointer dumpp)
+_db_dump_append (gpointer ipp, gpointer entryp, gpointer dumpp)
 {
   char *ip = (char *) ipp;
-  char *mac = (char *) macp;
+  host_entry_t *e = (host_entry_t *) entryp;
   _db_dump_str_t *dump = (_db_dump_str_t *) dumpp;
   char *line;
 
-  line = g_strdup_printf (dump->format_string, ip, mac);
+  line = g_strdup_printf (dump->format_string, ip, e->mac);
   dump->str = g_strconcat (dump->str, line, NULL);
   g_free (line);
 
@@ -184,9 +205,47 @@ db_dump (char *format_string)
   dump.str = g_strdup ("");
   dump.format_string = g_strdup (format_string);
 
-  g_hash_table_foreach (db_mac, _db_append, &dump);
+  g_hash_table_foreach (db, _db_dump_append, &dump);
 
   g_free (dump.format_string);
+  return dump.str;
+}
+
+/* Internal struct used by db_listenabled */
+typedef struct
+{
+  char *str;			/* String which is appended during dump operation */
+  time_t age;        /* Age of entry */
+} _db_listenabled_str_t;
+
+/* Internal function to append entries to dump string */
+static void
+_db_listenabled_append (gpointer ipp, gpointer entryp, gpointer dumpp)
+{
+  char *ip = (char *) ipp;
+  host_entry_t * e = (host_entry_t *) entryp;
+  _db_listenabled_str_t *dump = (_db_listenabled_str_t *) dumpp;
+
+  if ((1 == e->enabled) && ((time(NULL) - e->last_active) >= dump->age))
+  {
+    dump->str = g_strconcat (dump->str, ip, "\n", NULL);
+  }
+
+  return;
+}
+
+/* Function returns newly allocated string which is generated
+ * for every entry in db which age is >= than given value. After use
+ * this string should be freed.
+ * When db is empty, then it returns empty string (need to be
+ * freed anyway). */
+char *
+db_listenabled (int age)
+{
+  _db_listenabled_str_t dump;
+  dump.age = age;
+  dump.str = g_strdup ("");
+  g_hash_table_foreach (db, _db_listenabled_append, &dump);
   return dump.str;
 }
 
