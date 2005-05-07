@@ -27,22 +27,19 @@ u_int8_t *default_mac;
  * is changed to value from netdb.
  * If spoof mode is 0 and packet dst ip exists in netdb, then dst mac
  * is changed to global default_mac.
+ * MAC address is changed only if entry is enabled in db.
  * Returns 1 on success, -1 otherwise.
  * NOTE: Function printf error messages itself. */
-/* FIXME: modularize this function - it is too long and ugly
- *        - do it like in deta. */
 int
 change_mac (u_char * packet, u_int16_t packet_s)
 {
-  char *ip_str;
-  char *buf;
-  int ret, result, mac_len;
-  u_int8_t *mac;
+  int ret, result;
+  u_int8_t mac[6];
   struct in_addr ip_val;
 
   const ethernet_packet_t *ethernet;
   const ip_packet_t *ip;
-  int ethernet_s, ip_s;
+  int ethernet_s, ip_s, enabled;
 
   /* Check for ip truncation */
   ethernet_s = sizeof (ethernet_packet_t);
@@ -59,44 +56,30 @@ change_mac (u_char * packet, u_int16_t packet_s)
   ip = (ip_packet_t *) (packet + ethernet_s);
   /* Depending on spoof mode extract src or dst address */
   ip_val = (spoof_mode ? ip->ip_src : ip->ip_dst);
-  ip_str = inet_ntoa (ip_val);
 
   /* Get mac from netdb */
-  ret = execute_command (&buf, "getmac", ip_str);
-  if (1 == spoof_mode)
+  ret = ndb_execute_gethost (mac, &enabled, ip_val);
+  if (1 == ret)
   {
-    if (1 == ret)
+    if (1 == enabled)
     {
-      /* Convert mac in string form to array of bytes */
-      mac = libnet_hex_aton (buf, &mac_len);
       /* Do actual substitution */
       /* mac == 6 bytes */
-      memcpy ((void *) ethernet->ether_shost, mac, 6);
-      g_free (mac);
+      if (1 == spoof_mode)
+	memcpy ((void *) ethernet->ether_shost, mac, 6);
+      else
+	memcpy ((void *) ethernet->ether_dhost, default_mac, 6);
       result = 1;
     }
     else
-    {
-      fprintf (stderr, "%s (%s): debug error: %s\n",
-	       PNAME, p_mode_string, buf);
       result = -1;
-    }
   }
   else
   {
-    if (1 == ret)
-    {
-      memcpy ((void *) ethernet->ether_dhost, default_mac, 6);
-      result = 1;
-    }
-    else
-    {
-      fprintf (stderr, "%s (%s): debug error: %s\n",
-	       PNAME, p_mode_string, buf);
-      result = -1;
-    }
+    fprintf (stderr, "%s (%s): debug: host '%s' not in db\n",
+	     PNAME, p_mode_string, inet_ntoa (ip_val));
+    result = -1;
   }
-  g_free (buf);
   return result;
 }
 

@@ -119,24 +119,40 @@ execute_command_long (out_vector, command, arg)
 }
 
 
-/* Executes getmac command on netdb. On success fills mac
- * and returns 1. On failure returns -1, leaving mac untouched. */
+/* Executes gethost command on netdb. On success fills mac, enabled
+ * flag and returns 1. On failure returns -1. */
 int
-ndb_execute_getmac (u_int8_t * mac, struct in_addr ip)
+ndb_execute_gethost (u_int8_t * mac, int *out_enabled, struct in_addr ip)
 {
   int ret, mac_len, result;
   char *buf;
+  char *ptr;
   u_int8_t *mac_tmp;
 
-  ret = execute_command (&buf, "getmac", inet_ntoa (ip));
+  ret = execute_command (&buf, "gethost", inet_ntoa (ip));
   if (1 == ret)
   {
-    /* Convert mac in string form to array of bytes */
-    mac_tmp = libnet_hex_aton (buf, &mac_len);
-    /* ethernet mac == 6 bytes */
-    memcpy (mac, mac_tmp, 6);
-    g_free (mac_tmp);
-    result = 1;
+    /* Find enabled flag */
+    ptr = index (buf, ' ');
+    if (NULL == ptr)
+    {
+      fprintf (stderr, "[%s]: gethost returned malformed output.\n", PNAME);
+      exit (1);
+    }
+    else
+    {
+      *ptr = '\0';		/* Isolate mac from enabled flag */
+      if (0 == strcmp ("enabled", ptr + 1))
+	*out_enabled = 1;
+      else
+	*out_enabled = 0;
+      /* Convert mac in string form to array of bytes */
+      mac_tmp = libnet_hex_aton (buf, &mac_len);
+      /* ethernet mac == 6 bytes */
+      memcpy (mac, mac_tmp, 6);
+      g_free (mac_tmp);
+      result = 1;
+    }
   }
   else
     result = -1;

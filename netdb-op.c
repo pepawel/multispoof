@@ -228,9 +228,10 @@ cmd_getage (gchar ** tab, guint count, gchar ** out_msg)
 }
 
 int
-cmd_getmac (gchar ** tab, guint count, gchar ** out_msg)
+cmd_gethost (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *mac, *ip;
+  int enabled, ret;
 
   if (count < 2)
   {
@@ -244,11 +245,12 @@ cmd_getmac (gchar ** tab, guint count, gchar ** out_msg)
       msg = g_strdup ("-ERR Bad ip address\n");
     else
     {
-      mac = db_getmac (ip);
-      if (NULL == mac)
+      ret = db_gethost (&mac, &enabled, ip);
+      if (-1 == ret)
 	msg = g_strdup_printf ("-ERR No MAC found for %s\n", ip);
       else
-	msg = g_strdup_printf ("+OK %s\n", mac);
+	msg = g_strdup_printf ("+OK %s %s\n",
+			       mac, enabled ? "enabled" : "disabled");
       g_free (ip);
     }
   }
@@ -308,7 +310,7 @@ command_t commands[] = {
   ,
   {"remove", cmd_remove}	/* Removes entry from db. */
   ,
-  {"getmac", cmd_getmac}	/* Returns mac of entry. */
+  {"gethost", cmd_gethost}	/* Returns entry for given ip. */
   ,
   {"getage", cmd_getage}	/* Returns last active age of entry. */
   ,

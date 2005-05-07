@@ -146,16 +146,22 @@ db_remove (char *ip)
   return ret ? 1 : -1;
 }
 
-/* Returns mac for a given ip, or NULL if not found.
- * Returned string points to global hash table and
- * should not be freed. */
-char *
-db_getmac (char *ip)
+/* Given ip finds host entry, fills mac and enabled variabled
+ * and returns 1. Returns 0 if entry was not found. */
+int
+db_gethost (char **out_mac, int *out_enabled, char *ip)
 {
   host_entry_t *e;
 
   e = g_hash_table_lookup (db, ip);
-  return e != NULL ? e->mac : NULL;
+  if (NULL != e)
+  {
+    *out_mac = e->mac;
+    *out_enabled = e->enabled;
+    return 1;
+  }
+  else
+    return -1;
 }
 
 /* Returns inactivity age for a given ip, or -1 if not found. */

@@ -1,4 +1,4 @@
-Note: This file is used temporary in thesis.xml,
+Note: This file is temporary used in thesis.xml,
 do not move, delete or rename.
 
 natman:
@@ -16,3 +16,8 @@ netdb:
 multispoof:
 - pass to all rx instances bpf filter which
   blocks invalid addresses (224.0.0.0, 169.254.0.0 etc.)
+
+cmac:
+- something wrong, when pingin one of ourself addresses - check it
+  - when pinging 192.168.64.97
+  cmac (spoof): debug: host '124.191.192.168' not in db

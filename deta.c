@@ -108,7 +108,7 @@ create_arp_reply (reply, reply_s, request, request_s)
      u_int16_t request_s;
 {
   struct in_addr ip;
-  int ret;
+  int ret, enabled;
   static u_int8_t mac[6];
 
   /* Validate arp and get ip. */
@@ -119,21 +119,15 @@ create_arp_reply (reply, reply_s, request, request_s)
   }
 
   /* Get MAC address */
-  ret = ndb_execute_getmac (mac, ip);
-  if (-1 == ret)
-  {
-    /*
-       fprintf (stderr, "%s: debug: MAC for %s not found\n",
-       PNAME, inet_ntoa (ip));
-     */
-    return -1;
-  }
-  else
+  ret = ndb_execute_gethost (mac, &enabled, ip);
+  if ((1 == ret) && (1 == enabled))
   {
     /* Create arp reply */
     _fill_arp_reply (reply, reply_s, mac, request);
     return 1;
   }
+  else
+    return -1;
 }
 
 /* Prints usage. */

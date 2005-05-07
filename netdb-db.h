@@ -9,7 +9,7 @@ int db_change_enabled (char *ip, int val);
 int db_remove (char *ip);
 void db_init ();
 void db_free ();
-char *db_getmac (char *ip);
+int db_gethost (char **out_mac, int *out_enabled, char *ip);
 time_t db_getage (char *ip);
 char *db_dump (char *format_string);
 char *db_listenabled (int age);
