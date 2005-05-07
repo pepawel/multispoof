@@ -3,14 +3,44 @@
 COMPONENTS_DIR=.
 REAL_IFACE=eth1
 TAP_IFACE=tap0
+MAIN_CHAIN=multispoof-main
+SUB_CHAIN=multispoof-sub
+MIN_AGE=30
+NATMAN_INTERVAL=5
 NDB_SOCKET="netdbsocket"
 
 PATH=$COMPONENTS_DIR:$PATH
 
+function setup_nf_rules
+{
+  iptables -t nat -N $MAIN_CHAIN 2> /dev/null
+  iptables -t nat -N $SUB_CHAIN 2> /dev/null
+  iptables -t nat -F $MAIN_CHAIN
+  iptables -t nat -F $SUB_CHAIN
+  
+  iptables -t nat -A $MAIN_CHAIN -j $SUB_CHAIN
+  iptables -t nat -A $MAIN_CHAIN -j DROP
+  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
+     2>/dev/null
+  iptables -t nat -I POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN
+}
+
+function clean_up_nf_rules
+{
+  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
+        2> /dev/null
+  iptables -t nat -F $MAIN_CHAIN
+  iptables -t nat -F $SUB_CHAIN
+  iptables -t nat -X $MAIN_CHAIN
+  iptables -t nat -X $SUB_CHAIN
+}
+
 function clean_up
 {
   trap 15
-  # FIXME: restore network configuration for $REAL_IFACE
+  # FIXME: restore configuration for $REAL_IFACE
+  echo "multispoof: cleaning up"
+  clean_up_nf_rules
   kill -SIGTERM -$$
 }
 
@@ -25,16 +55,6 @@ function arprep_pipeline
 {
   local IFACE=$1
   rx $IFACE "arp" arprep | arprep $NDB_SOCKET | tx $IFACE arprep
-}
-
-function detector_pipeline
-{
-  echo detector: FIXME: implement me.
-}
-
-function natman
-{
-  echo natman: FIXME: implement me.
 }
 
 function conncheck
@@ -76,12 +96,12 @@ echo "multispoof: PID $$"
 trap clean_up 15 2
 
 netdb &
-sleep 0.7 # netdb opening socket FIXME: more elegant solution
+sleep 0.7 # netdb opening socket FIXME: find better solution
 spoof_pipeline $REAL_IFACE &
 arprep_pipeline $REAL_IFACE &
-detector_pipeline $REAL_IFACE &
-natman $TAP_IFACE &
-sleep 0.7 # tapio creating tap device FIXME: more elegant solution
+setup_nf_rules
+natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL &
+sleep 0.7 # tapio creating tap device FIXME: find better solution
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
 conncheck $TAP_IFACE

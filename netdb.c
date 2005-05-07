@@ -19,26 +19,6 @@
 
 /* FIXME: limit number of connection to prevent fd_set overflow */
 
-/* FIXME: this function is copied from glib source (because I use
- * 				old version of glib, which doesn't have it). */
-#if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 6))
-#ifndef _GLIB_HACK_
-#define _GLIB_HACK_
-guint
-g_strv_length (gchar ** str_array)
-{
-  guint i = 0;
-
-  g_return_val_if_fail (str_array != NULL, 0);
-
-  while (str_array[i])
-    ++i;
-
-  return i;
-}
-#endif
-#endif
-
 /* Global variables, to make clean_up function work
  * when called from signal handling routine. */
 int serversocket;		/* Socket for accepting new clients */
@@ -373,8 +353,8 @@ main (int argc, char *argv[])
   /* Ignore SIGPIPE caused by disconnecting user */
   signal (SIGPIPE, SIG_IGN);
 
-  fprintf(stderr, "%s: Listening on %s\n", PNAME, socketname);
-  
+  fprintf (stderr, "%s: Listening on %s\n", PNAME, socketname);
+
   /* Serve connections and return on error */
   serve_connections (serversocket);
 

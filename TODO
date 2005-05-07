@@ -1,0 +1,18 @@
+Note: This file is used temporary in thesis.xml,
+do not move, delete or rename.
+
+natman:
+- execute_command_long with empty input gives two element tab
+v whats with nth match - done
+
+netdb:
+- implement connection limit
+- fix bug which shows when
+	there is too much input data
+- when tx cannot start,
+  pipeline should be stopped, but
+  it isn't - why? - eof case
+
+multispoof:
+- pass to all rx instances bpf filter which
+  blocks invalid addresses (224.0.0.0, 169.254.0.0 etc.)

@@ -124,7 +124,7 @@ cmd_enable (gchar ** tab, guint count, gchar ** out_msg)
       else if (1 == ret)
 	msg = "+OK Enabling succeeded\n";
       else
-  msg = "+OK Already enabled\n";
+	msg = "+OK Already enabled\n";
     }
   }
   *out_msg = g_strdup (msg);
@@ -157,7 +157,7 @@ cmd_disable (gchar ** tab, guint count, gchar ** out_msg)
       else if (1 == ret)
 	msg = "+OK Disabling succeeded\n";
       else
-  msg = "+OK Already disabled\n";
+	msg = "+OK Already disabled\n";
     }
   }
   *out_msg = g_strdup (msg);
@@ -215,7 +215,7 @@ cmd_getage (gchar ** tab, guint count, gchar ** out_msg)
     else
     {
       time = db_getage (ip);
-      if (((time_t) -1) == time)
+      if (((time_t) - 1) == time)
 	msg = g_strdup_printf ("-ERR Entry for %s not found\n", ip);
       else
 	msg = g_strdup_printf ("+OK %d\n", (int) time);
@@ -298,27 +298,27 @@ cmd_listenabled (gchar ** tab, guint count, gchar ** out_msg)
 
 /* NULL terminated array of commands */
 command_t commands[] = {
-  {"quit", cmd_quit} /* Closes client connection. */
+  {"quit", cmd_quit}		/* Closes client connection. */
   ,
-  {"host", cmd_host} /* Adds, replaces entry. Updates last active. */
+  {"host", cmd_host}		/* Adds, replaces entry. Updates last active. */
   ,
-  {"enable", cmd_enable} /* Sets enabled flag for entry. */
+  {"enable", cmd_enable}	/* Sets enabled flag for entry. */
   ,
-  {"disable", cmd_disable} /* Unsets enabled flag for entry. */
+  {"disable", cmd_disable}	/* Unsets enabled flag for entry. */
   ,
-  {"remove", cmd_remove} /* Removes entry from db. */
+  {"remove", cmd_remove}	/* Removes entry from db. */
   ,
-  {"getmac", cmd_getmac} /* Returns mac of entry. */
+  {"getmac", cmd_getmac}	/* Returns mac of entry. */
   ,
-  {"getage", cmd_getage} /* Returns last active age of entry. */
+  {"getage", cmd_getage}	/* Returns last active age of entry. */
   ,
-  {"setvar", cmd_setvar} /* Sets given variable with given value. */
+  {"setvar", cmd_setvar}	/* Sets given variable with given value. */
   ,
-  {"getvar", cmd_getvar} /* Gets value of given variable. */
+  {"getvar", cmd_getvar}	/* Gets value of given variable. */
   ,
-  {"dump", cmd_dump} /* Dumps ips and associated mac addresses. */
+  {"dump", cmd_dump}		/* Dumps ips and associated mac addresses. */
   ,
-  {"listenabled", cmd_listenabled} /* Dumps en. ips with age >= given*/
+  {"listenabled", cmd_listenabled}	/* Dumps en. ips with age >= given */
   ,
   {(char *) NULL, (netdb_func_t *) NULL}
 };

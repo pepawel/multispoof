@@ -11,26 +11,6 @@
 
 #define PNAME "ndb-client"
 
-/* FIXME: this function is copied from glib source (because I use
- * 				old version of glib, which doesn't have it). */
-#if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 6))
-#ifndef _GLIB_HACK_
-#define _GLIB_HACK_
-guint
-g_strv_length (gchar ** str_array)
-{
-  guint i = 0;
-
-  g_return_val_if_fail (str_array != NULL, 0);
-
-  while (str_array[i])
-    ++i;
-
-  return i;
-}
-#endif
-#endif
-
 /* Global socket for communication with netdb.
  * Use only by functions in this module. */
 FILE *s = NULL;
@@ -78,6 +58,66 @@ execute_command (out_buf, command, arg)
   }
   return result;
 }
+
+int
+execute_command_long (out_vector, command, arg)
+     char ***out_vector;
+     char *command;
+     char *arg;
+{
+  static char tmp_buf[128];
+  gchar **tab;
+  int result, count;
+  char *long_string, *long_string_new;
+
+  /* Sanity check */
+  if (NULL == s)
+  {
+    return -1;
+  }
+
+  fprintf (s, "%s %s\n", command, arg);
+  fflush (s);
+  long_string = g_strdup ("");
+  count = 0;
+  while (1)
+  {
+    fgets (tmp_buf, sizeof (tmp_buf), s);
+    if ('+' == tmp_buf[0])
+    {
+      result = 1;
+      break;
+    }
+    else if ('-' == tmp_buf[0])
+    {
+      result = -1;
+      break;
+    }
+    else
+    {
+      long_string_new = g_strconcat (long_string, tmp_buf, NULL);
+      g_free (long_string);
+      long_string = long_string_new;
+      count++;
+    }
+  }
+
+  if (-1 == result)
+  {
+    g_free (long_string);
+  }
+  else
+  {
+    tab = g_strsplit (long_string, "\n", count);
+    if (0 != count)
+      g_strstrip (tab[count - 1]);
+
+    g_free (long_string);
+    *out_vector = tab;
+  }
+  return result;
+}
+
 
 /* Executes getmac command on netdb. On success fills mac
  * and returns 1. On failure returns -1, leaving mac untouched. */
