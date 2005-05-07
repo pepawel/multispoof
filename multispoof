@@ -51,10 +51,10 @@ function spoof_pipeline
   | cmac spoof | tx $IFACE tapio
 }
 
-function arprep_pipeline
+function deta_pipeline
 {
   local IFACE=$1
-  rx $IFACE "arp" arprep | arprep $NDB_SOCKET | tx $IFACE arprep
+  rx $IFACE "ether broadcast" deta | deta $NDB_SOCKET | tx $IFACE deta
 }
 
 function conncheck
@@ -98,7 +98,7 @@ trap clean_up 15 2
 netdb &
 sleep 0.7 # netdb opening socket FIXME: find better solution
 spoof_pipeline $REAL_IFACE &
-arprep_pipeline $REAL_IFACE &
+deta_pipeline $REAL_IFACE &
 setup_nf_rules
 natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL &
 sleep 0.7 # tapio creating tap device FIXME: find better solution

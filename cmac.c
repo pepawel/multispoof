@@ -30,7 +30,7 @@ u_int8_t *default_mac;
  * Returns 1 on success, -1 otherwise.
  * NOTE: Function printf error messages itself. */
 /* FIXME: modularize this function - it is too long and ugly
- *        - do it like in arprep. */
+ *        - do it like in deta. */
 int
 change_mac (u_char * packet, u_int16_t packet_s)
 {

@@ -4,7 +4,7 @@
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
 
-#define PNAME "arprep"
+#define PNAME "deta"
 
 #include "common.h"
 #include "printpkt.h"
@@ -145,7 +145,7 @@ usage ()
   return;
 }
 
-/* FIXME: take common filter-like behavior of cmac and arprep
+/* FIXME: take common filter-like behavior of cmac and deta
  *        and put it into a module */
 int
 main (int argc, char *argv[])
