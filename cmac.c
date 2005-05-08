@@ -21,6 +21,9 @@ int spoof_mode;			/* for program */
 /* Default mac - used in uspoof mode */
 u_int8_t *default_mac;
 
+/* Minimal age - only older entries are used */
+int min_age;
+
 /* Changes mac in packet (of packet_s size) according to global
  * spoof_mode variable.
  * If spoof mode is 1 and packet src ip exists in netdb, then src mac
@@ -33,7 +36,7 @@ u_int8_t *default_mac;
 int
 change_mac (u_char * packet, u_int16_t packet_s)
 {
-  int ret, result;
+  int ret, result, age;
   u_int8_t mac[6];
   struct in_addr ip_val;
 
@@ -58,10 +61,11 @@ change_mac (u_char * packet, u_int16_t packet_s)
   ip_val = (spoof_mode ? ip->ip_src : ip->ip_dst);
 
   /* Get mac from netdb */
-  ret = ndb_execute_gethost (mac, &enabled, ip_val);
+  ret = ndb_execute_gethost (mac, &enabled, &age, ip_val);
   if (1 == ret)
   {
-    if (1 == enabled)
+    /* Only if host is enabled and is old enough can be used. */
+    if ((1 == enabled) && (age > min_age))
     {
       /* Do actual substitution */
       /* mac == 6 bytes */
@@ -126,10 +130,11 @@ update_default_mac ()
 void
 usage ()
 {
-  printf ("Usage:\n\t%s mode\n", PNAME);
+  printf ("Usage:\n\t%s mode min_age\n", PNAME);
   printf ("where mode can be:\n");
   printf ("\tspoof - for changing source mac\n");
   printf ("\tunspoof - for changing destination mac\n");
+  printf ("min_age specifices minimal age for entry to be valid\n");
   return;
 }
 
@@ -144,7 +149,7 @@ main (int argc, char *argv[])
 
   socketname = "netdbsocket";
 
-  if (argc < 2)
+  if (argc < 3)
   {
     usage ();
     return 1;
@@ -160,6 +165,7 @@ main (int argc, char *argv[])
     return 1;
   }
   p_mode_string = argv[1];
+  min_age = atoi (argv[2]);
 
   /* Connect to netdb */
   ret = ndb_init (socketname, &msg);

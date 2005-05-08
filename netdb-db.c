@@ -26,6 +26,7 @@ typedef struct
 /* Global array of variables */
 variable_t variable_tab[] = {
   {"defmac", (char *) NULL},	/* Default mac address for cmac unspoof */
+  {"banned", (char *) NULL},	/* IP addresses which can't be added */
   {(char *) NULL, (char *) NULL}
 };
 
@@ -149,7 +150,7 @@ db_remove (char *ip)
 /* Given ip finds host entry, fills mac and enabled variabled
  * and returns 1. Returns 0 if entry was not found. */
 int
-db_gethost (char **out_mac, int *out_enabled, char *ip)
+db_gethost (char **out_mac, int *out_enabled, int *out_age, char *ip)
 {
   host_entry_t *e;
 
@@ -158,20 +159,11 @@ db_gethost (char **out_mac, int *out_enabled, char *ip)
   {
     *out_mac = e->mac;
     *out_enabled = e->enabled;
+    *out_age = time (NULL) - e->last_active;
     return 1;
   }
   else
     return -1;
-}
-
-/* Returns inactivity age for a given ip, or -1 if not found. */
-time_t
-db_getage (char *ip)
-{
-  host_entry_t *e;
-
-  e = g_hash_table_lookup (db, ip);
-  return e != NULL ? (time (NULL) - e->last_active) : -1;
 }
 
 /* Internal struct used by db_dump */

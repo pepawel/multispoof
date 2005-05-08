@@ -24,15 +24,15 @@ netdb: netdb.o netdb-op.o netdb-db.o validate.o
 cmac: cmac.o getpkt.o printpkt.o ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 # FIXME: remove dependency on libnet from deta
-deta: deta.o getpkt.o printpkt.o ndb-client.o
+deta: deta.o getpkt.o printpkt.o ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 # FIXME: remove dependency on libnet from natman
-natman: natman.o ndb-client.o
+natman: natman.o ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 # FIXME: remove dependency on libnet from ndbexec
-ndbexec: ndbexec.c ndb-client.o
+ndbexec: ndbexec.c ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
-test-netdb: test-netdb.o ndb-client.o
+test-netdb: test-netdb.o ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 	
 clean:

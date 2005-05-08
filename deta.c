@@ -11,47 +11,53 @@
 #include "getpkt.h"
 #include "ndb-client.h"
 #include "netheaders.h"
+#include "validate.h"
 
-/* Gets ip from arp request.
- * On success ip is filled with address extracted from arp request
- * and 1 is returned. On error -1 is returned.
- * NOTE: Prints error messages on stderr. */
-int
-get_ip_from_arp_request (ip, request, request_s)
-     struct in_addr *ip;
-     u_char *request;
-     u_int16_t request_s;
+/* Minimal age of host to be used. */
+int min_age;
+
+void
+packet_get_source_mac (mac, packet)
+     u_int8_t *mac;
+     u_char *packet;
 {
-  const ethernet_packet_t *ethernet;
-  const arp_packet_t *arp;
-  int ethernet_s, arp_s;
+  ethernet_packet_t *ethernet = (ethernet_packet_t *) packet;
 
-  /* Casting magic: manipulate packet data in structured way. */
-  ethernet_s = sizeof (ethernet_packet_t);
-  ethernet = (ethernet_packet_t *) request;
-  arp_s = sizeof (arp_packet_t);
-  arp = (arp_packet_t *) (request + ethernet_s);
+  memcpy (mac, ethernet->ether_shost, ETHER_ADDR_LEN);
+  return;
+}
 
-  /* Check for arp correctness:
-   * - is packet truncated? */
-  if ((ethernet_s + arp_s) > request_s)
-  {
-    fprintf (stderr, "%s: truncated arp\n", PNAME);
-    return -1;
-  }
-  /* - is this ARP request? */
-  if (0x0100 != arp->ar_op)
-  {
-    return -1;
-  }
-  /* - FIXME: other checks - ideally checks should be done
-   *          in the same way as in linux kernel to prevent
-   *          fingerprinting. */
+void
+ip_get_source_ip (out_ip, packet)
+     struct in_addr *out_ip;
+     u_char *packet;
+{
+  ip_packet_t *ip = (ip_packet_t *) (packet + sizeof (ethernet_packet_t));
 
-  /* Extract ip address from packet */
-  memcpy (ip, arp->t_ip, 4);
+  *out_ip = ip->ip_src;
+  return;
+}
 
-  return 1;
+void
+arp_get_source_ip (out_ip, packet)
+     struct in_addr *out_ip;
+     u_char *packet;
+{
+  arp_packet_t *arp = (arp_packet_t *) (packet + sizeof (ethernet_packet_t));
+
+  memcpy (out_ip, arp->s_ip, 4);
+  return;
+}
+
+void
+arp_get_target_ip (out_ip, packet)
+     struct in_addr *out_ip;
+     u_char *packet;
+{
+  arp_packet_t *arp = (arp_packet_t *) (packet + sizeof (ethernet_packet_t));
+
+  memcpy (out_ip, arp->t_ip, 4);
+  return;
 }
 
 /* Fills reply using given MAC and info from given request.
@@ -108,19 +114,14 @@ create_arp_reply (reply, reply_s, request, request_s)
      u_int16_t request_s;
 {
   struct in_addr ip;
-  int ret, enabled;
+  int ret, enabled, age;
   static u_int8_t mac[6];
 
-  /* Validate arp and get ip. */
-  ret = get_ip_from_arp_request (&ip, request, request_s);
-  if (1 != ret)
-  {
-    return -1;
-  }
+  arp_get_target_ip (&ip, request);
 
   /* Get MAC address */
-  ret = ndb_execute_gethost (mac, &enabled, ip);
-  if ((1 == ret) && (1 == enabled))
+  ret = ndb_execute_gethost (mac, &enabled, &age, ip);
+  if ((1 == ret) && (1 == enabled) && (age > min_age))
   {
     /* Create arp reply */
     _fill_arp_reply (reply, reply_s, mac, request);
@@ -130,12 +131,155 @@ create_arp_reply (reply, reply_s, request, request_s)
     return -1;
 }
 
+/* Returns ethernet protocol of the packet or -1 on error.*/
+int
+get_packet_proto (out_proto, packet, packet_s)
+     u_short *out_proto;
+     u_char *packet;
+     u_int16_t packet_s;
+{
+  const ethernet_packet_t *ethernet;
+  u_short type;
+  int result;
+
+  ethernet = (ethernet_packet_t *) packet;
+  type = ethernet->ether_type;
+  if (0x8 == type)		/* IP */
+  {
+    /* Check for packet truncation. */
+    if (sizeof (ethernet_packet_t) + sizeof (ip_packet_t) > packet_s)
+      result = -1;
+    else
+      result = 1;
+  }
+  else if (0x608 == type)	/* ARP */
+  {
+    /* Check for packet truncation. */
+    if (sizeof (ethernet_packet_t) + sizeof (arp_packet_t) > packet_s)
+      result = -1;
+    else
+    {
+      /* FIXME: Check if it is arp request */
+      result = 1;
+    }
+  }
+  else
+  {
+    result = 1;
+  }
+  if (1 == result)
+    *out_proto = type;
+  return result;
+}
+
+/* FIXME: banned list needs to be global array of ips fetches
+ * only one time at initialisation. */
+/* Returns 1 if given ip is on banned list. */
+int
+is_banned (struct in_addr ip)
+{
+  char *buf, *ptr;
+  int ret = -1;
+
+  while (-1 == ret)
+  {
+    ret = execute_command (&buf, "getvar", "banned");
+    if (-1 == ret)
+    {
+      fprintf (stderr, "%s: Waiting for banned list\n", PNAME);
+      free (buf);
+      sleep (1);
+    }
+  }
+  ptr = strstr (buf, inet_ntoa (ip));
+  free (buf);
+  return (NULL == ptr ? -1 : 1);
+}
+
+/* Performs various actions on packet and netdb.
+ * For detailed explanation see the code.
+ * If reply needs to be send reply and reply_s are filled
+ * and function returns 1. When no reply needs to be send
+ * function returns 0. On error it returns -1. */
+int
+mangle_packet (reply, reply_s, packet, packet_s)
+     u_char *reply;
+     u_int16_t *reply_s;
+     u_char *packet;
+     u_int16_t packet_s;
+{
+  int ret;
+  u_short proto;
+  u_int8_t mac[6];
+  struct in_addr ip;
+  int result = 0;
+
+  /* Find out protocol used by current packet */
+  ret = get_packet_proto (&proto, packet, packet_s);
+  if (-1 == ret)
+  {
+    fprintf (stderr, "%s: incorrect packet/frame\n", PNAME);
+  }
+  else if ((0x8 == proto) || (0x608 == proto))
+  {
+    /* Get source MAC */
+    packet_get_source_mac (mac, packet);
+    /* Get source IP */
+    if (0x8 == proto)		/* IP */
+    {
+      ip_get_source_ip (&ip, packet);
+    }
+    else if (0x608 == proto)	/* ARP */
+    {
+      arp_get_source_ip (&ip, packet);
+    }
+
+    /* Check if IP is not banned in netdb */
+    if (1 != is_banned (ip))
+    {
+      /* IP is legal. Update db. */
+      ret = ndb_execute_host (ip, mac);
+      if (-1 == ret)
+      {
+	fprintf (stderr, "%s: Error updating db with %s (%s)\n",
+		 PNAME, inet_ntoa (ip), mac_ntoa (mac));
+      }
+      else if (1 == ret)
+      {
+	fprintf (stderr, "%s: Adding host %s (%s) to db\n",
+		 PNAME, inet_ntoa (ip), mac_ntoa (mac));
+      }
+      else if (2 == ret)
+      {
+	fprintf (stderr, "%s: Updating entry for %s with mac %s\n",
+		 PNAME, inet_ntoa (ip), mac_ntoa (mac));
+      }
+      else
+      {
+	/* Sniffed ip exists in db with correct mac. */
+      }
+
+      /* If it was ARP request, serve it. */
+      if (0x608 == proto)
+      {
+	result = create_arp_reply (reply, reply_s, packet, packet_s);
+      }
+    }
+  }
+  else
+  {
+    fprintf (stderr, "%s: Unknown protocol: %x (%d)\n", PNAME, proto, proto);
+  }
+  return result;
+}
+
 /* Prints usage. */
 void
 usage ()
 {
-  printf ("Usage:\n\t%s [socket]\n", PNAME);
-  printf ("\twhere socket is local netdb socket.\n");
+  printf ("Usage:\n\t%s socket min_age\n", PNAME);
+  printf ("\twhere socket is local netdb socket,\n");
+  printf ("\tand min_age is minimal age of host to be used.\n");
   return;
 }
 
@@ -144,18 +288,22 @@ usage ()
 int
 main (int argc, char *argv[])
 {
-  u_char arp_request[MAX_PACKET_SIZE];
-  u_int16_t arp_request_s;
-  u_char arp_reply[MAX_PACKET_SIZE];
-  u_int16_t arp_reply_s;
+  u_char packet[MAX_PACKET_SIZE];
+  u_int16_t packet_s;
+  u_char reply[MAX_PACKET_SIZE];
+  u_int16_t reply_s;
+
   char *msg;
   int ret;
   char *socketname;
 
-  if (argc > 1)
-    socketname = argv[1];
-  else
-    socketname = "netdbsocket";
+  if (argc < 3)
+  {
+    usage ();
+    exit (1);
+  }
+  socketname = argv[1];
+  min_age = atoi (argv[2]);
 
   /* Connect to netdb */
   ret = ndb_init (socketname, &msg);
@@ -167,7 +315,7 @@ main (int argc, char *argv[])
 
   while (1)
   {
-    ret = get_packet (arp_request, &arp_request_s);
+    ret = get_packet (packet, &packet_s);
     if (-1 == ret)
     {
       fprintf (stderr, "%s: malformed packet.\n", PNAME);
@@ -178,10 +326,9 @@ main (int argc, char *argv[])
     }
     else
     {
-      ret = create_arp_reply (arp_reply, &arp_reply_s,
-			      arp_request, arp_request_s);
-      if (ret == 1)
-	print_packet (arp_reply, arp_reply_s);
+      ret = mangle_packet (reply, &reply_s, packet, packet_s);
+      if (1 == ret)
+	print_packet (reply, reply_s);
     }
   }
 

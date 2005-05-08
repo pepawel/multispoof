@@ -89,7 +89,7 @@ cmd_host (gchar ** tab, guint count, gchar ** out_msg)
       else if (2 == ret)
 	msg = "+OK Entry updated\n";
       else if (3 == ret)
-	msg = "+OK Last seen time updated\n";
+	msg = "+OK Age of entry updated\n";
       else
 	msg = "-ERR Unknown return code\n";
     }
@@ -197,41 +197,10 @@ cmd_remove (gchar ** tab, guint count, gchar ** out_msg)
 }
 
 int
-cmd_getage (gchar ** tab, guint count, gchar ** out_msg)
-{
-  char *msg, *ip;
-  time_t time;
-
-  if (count < 2)
-  {
-    msg = g_strdup ("-ERR Too few arguments\n");
-  }
-  else
-  {
-    /* Convert to standard form, catch errors */
-    ip = get_std_ip_str (tab[1]);
-    if (NULL == ip)
-      msg = g_strdup ("-ERR Bad ip address\n");
-    else
-    {
-      time = db_getage (ip);
-      if (((time_t) - 1) == time)
-	msg = g_strdup_printf ("-ERR Entry for %s not found\n", ip);
-      else
-	msg = g_strdup_printf ("+OK %d\n", (int) time);
-      g_free (ip);
-    }
-  }
-
-  *out_msg = msg;
-  return 1;
-}
-
-int
 cmd_gethost (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *mac, *ip;
-  int enabled, ret;
+  int enabled, ret, age;
 
   if (count < 2)
   {
@@ -245,12 +214,12 @@ cmd_gethost (gchar ** tab, guint count, gchar ** out_msg)
       msg = g_strdup ("-ERR Bad ip address\n");
     else
     {
-      ret = db_gethost (&mac, &enabled, ip);
+      ret = db_gethost (&mac, &enabled, &age, ip);
       if (-1 == ret)
 	msg = g_strdup_printf ("-ERR No MAC found for %s\n", ip);
       else
-	msg = g_strdup_printf ("+OK %s %s\n",
-			       mac, enabled ? "enabled" : "disabled");
+	msg = g_strdup_printf ("+OK %s %s %d\n",
+			       mac, enabled ? "enabled" : "disabled", age);
       g_free (ip);
     }
   }
@@ -311,8 +280,6 @@ command_t commands[] = {
   {"remove", cmd_remove}	/* Removes entry from db. */
   ,
   {"gethost", cmd_gethost}	/* Returns entry for given ip. */
-  ,
-  {"getage", cmd_getage}	/* Returns last active age of entry. */
   ,
   {"setvar", cmd_setvar}	/* Sets given variable with given value. */
   ,

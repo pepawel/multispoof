@@ -5,7 +5,9 @@
 
 int execute_command (char **out_buf, char *command, char *arg);
 int execute_command_long (char ***out_vector, char *command, char *arg);
-int ndb_execute_gethost (u_int8_t * mac, int *out_enabled, struct in_addr ip);
+int ndb_execute_gethost (u_int8_t * mac, int *out_enabled, int *out_age,
+			 struct in_addr ip);
+int ndb_execute_host (struct in_addr ip, u_int8_t * mac);
 int ndb_init (char *socketname, char **out_error);
 void ndb_cleanup ();
 

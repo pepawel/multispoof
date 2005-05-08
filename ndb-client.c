@@ -11,6 +11,8 @@
 
 #define PNAME "ndb-client"
 
+#include "validate.h"
+
 /* Global socket for communication with netdb.
  * Use only by functions in this module. */
 FILE *s = NULL;
@@ -122,42 +124,88 @@ execute_command_long (out_vector, command, arg)
 /* Executes gethost command on netdb. On success fills mac, enabled
  * flag and returns 1. On failure returns -1. */
 int
-ndb_execute_gethost (u_int8_t * mac, int *out_enabled, struct in_addr ip)
+ndb_execute_gethost (mac, out_enabled, out_age, ip)
+     u_int8_t *mac;
+     int *out_enabled;
+     int *out_age;
+     struct in_addr ip;
 {
   int ret, mac_len, result;
   char *buf;
-  char *ptr;
+  char *eptr, *aptr;
   u_int8_t *mac_tmp;
 
   ret = execute_command (&buf, "gethost", inet_ntoa (ip));
   if (1 == ret)
   {
     /* Find enabled flag */
-    ptr = index (buf, ' ');
-    if (NULL == ptr)
+    eptr = index (buf, ' ');
+    if (NULL == eptr)
     {
-      fprintf (stderr, "[%s]: gethost returned malformed output.\n", PNAME);
+      fprintf (stderr, "[%s]: gethost returned malformed output 1.\n", PNAME);
       exit (1);
     }
     else
     {
-      *ptr = '\0';		/* Isolate mac from enabled flag */
-      if (0 == strcmp ("enabled", ptr + 1))
-	*out_enabled = 1;
+      aptr = index (eptr + 1, ' ');
+      if (NULL == aptr)
+      {
+	fprintf (stderr, "[%s]: gethost returned malformed output 2.\n",
+		 PNAME);
+	exit (1);
+      }
       else
-	*out_enabled = 0;
-      /* Convert mac in string form to array of bytes */
-      mac_tmp = libnet_hex_aton (buf, &mac_len);
-      /* ethernet mac == 6 bytes */
-      memcpy (mac, mac_tmp, 6);
-      g_free (mac_tmp);
-      result = 1;
+      {
+	*eptr = '\0';		/* Isolate mac from enabled flag */
+	*aptr = '\0';		/* Isolate enabled flag from age */
+	if (0 == strcmp ("enabled", eptr + 1))
+	  *out_enabled = 1;
+	else
+	  *out_enabled = 0;
+	*out_age = atoi (aptr + 1);
+	/* Convert mac in string form to array of bytes */
+	mac_tmp = libnet_hex_aton (buf, &mac_len);
+	/* ethernet mac == 6 bytes */
+	memcpy (mac, mac_tmp, 6);
+	g_free (mac_tmp);
+	result = 1;
+      }
     }
   }
   else
     result = -1;
   g_free (buf);
   return result;
+}
+
+int
+ndb_execute_host (ip, mac)
+     struct in_addr ip;
+     u_int8_t *mac;
+{
+  int ret, result;
+  char *buf;
+  char *params;
+
+  params = g_strconcat (inet_ntoa (ip), " ", mac_ntoa (mac), NULL);
+  ret = execute_command (&buf, "host", params);
+  g_free (params);
+  if (1 == ret)
+  {
+    if (0 == strcmp (buf, "Entry added"))
+      result = 1;
+    else if (0 == strcmp (buf, "Entry updated"))
+      result = 2;
+    else if (0 == strcmp (buf, "Age of entry updated"))
+      result = 3;
+    else
+      result = -1;
+  }
+  else
+    result = -1;
+  g_free (buf);
+  return result;
+
 }
 
 /* Establishes connection with netdb on socket socketname.

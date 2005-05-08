@@ -6,6 +6,14 @@ natman:
 v whats with nth match - done
 
 netdb:
+- add min_age variable to netdb:
+  - gethost will return data only when host age is good
+- gethost should allow to specify miminal age of host to get
+  - if age of that host is lower then do not serve it
+  - cmac should look at age
+  - deta when replying to arps should also look at it
+  - find all gethost command executions in code
+
 - implement connection limit
 - fix bug which shows when
 	there is too much input data
@@ -21,3 +29,4 @@ cmac:
 - something wrong, when pingin one of ourself addresses - check it
   - when pinging 192.168.64.97
   cmac (spoof): debug: host '124.191.192.168' not in db
+

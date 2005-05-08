@@ -29,8 +29,8 @@ main (int argc, char *argv[])
   }
   else
   {
-    usage();
-    exit(1);
+    usage ();
+    exit (1);
   }
 
   /* Connect to netdb */
@@ -43,33 +43,32 @@ main (int argc, char *argv[])
 
   /* Join parameters */
   param_count = argc - 3;
-  params = (char *) strdup("");
+  params = (char *) strdup ("");
   for (i = 0; i < param_count; i++)
   {
-    params_new = (char *)g_strconcat (params, argv[i + 3], NULL);
-    g_free(params);
+    params_new = (char *) g_strconcat (params, argv[i + 3], NULL);
+    g_free (params);
     params = params_new;
     if (i != (param_count - 1))
     {
-      params_new = (char *)g_strconcat (params, " ", NULL);
-      g_free(params);
+      params_new = (char *) g_strconcat (params, " ", NULL);
+      g_free (params);
       params = params_new;
     }
   }
-  
-  ret = execute_command_long(&tab, command, params);
-  g_free(params);
+
+  ret = execute_command_long (&tab, command, params);
+  g_free (params);
   if (-1 == ret)
   {
-    fprintf(stderr, "%s: Command execution failed (%s)\n",
-        PNAME, command);
+    fprintf (stderr, "%s: Command execution failed (%s)\n", PNAME, command);
   }
   else
   {
-    tab_count = g_strv_length(tab);
+    tab_count = g_strv_length (tab);
     for (i = 0; i < tab_count; i++)
-      printf("%s\n", tab[i]);
-    g_strfreev(tab);
+      printf ("%s\n", tab[i]);
+    g_strfreev (tab);
   }
 
   ndb_cleanup ();

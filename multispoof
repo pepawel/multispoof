@@ -5,6 +5,7 @@ REAL_IFACE=eth1
 TAP_IFACE=tap0
 MAIN_CHAIN=multispoof-main
 SUB_CHAIN=multispoof-sub
+GATEWAY_IP="192.168.64.200"
 # From my observations Windows SMB broadcasts are in max 12 minutes
 # intervals, so setting MIN_AGE to 15 minutes would be safe bet.
 MIN_AGE=30
@@ -49,14 +50,15 @@ function clean_up
 function spoof_pipeline
 {
   local IFACE=$1
-  rx $IFACE "ip and not ether broadcast" tapio | cmac unspoof | tapio \
-  | cmac spoof | tx $IFACE tapio
+  rx $IFACE "ip and not ether broadcast" tapio | \
+  cmac unspoof $MIN_AGE| tapio | cmac spoof $MIN_AGE | tx $IFACE tapio
 }
 
 function deta_pipeline
 {
   local IFACE=$1
-  rx $IFACE "ether broadcast" deta | deta $NDB_SOCKET | tx $IFACE deta
+  rx $IFACE "ether broadcast" deta | deta $NDB_SOCKET $MIN_AGE | \
+  tx $IFACE deta
 }
 
 function conncheck
@@ -77,13 +79,18 @@ function register_mac
   fi
 }
 
+function set_variables
+{
+  local BANNED="$GATEWAY_IP"
+  ndbexec $NDB_SOCKET setvar banned "$BANNED"
+}
+
 # FIXME: get address from real device
 function setup_ifaces
 {
   local REAL=$1
   local TAP=$2
   local CIDR="192.168.64.33/24"
-  local GATEWAY_IP="192.168.64.200"
   local GATEWAY_MAC="00:00:00:00:00:02"
   ip addr flush dev $REAL 2> /dev/null
   ip addr add $CIDR dev $TAP
@@ -98,6 +105,7 @@ trap clean_up 15 2
 
 netdb &
 sleep 0.7 # netdb opening socket FIXME: find better solution
+set_variables
 spoof_pipeline $REAL_IFACE &
 deta_pipeline $REAL_IFACE &
 setup_nf_rules

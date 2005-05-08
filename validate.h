@@ -3,5 +3,6 @@
 
 char *get_std_ip_str (char *ip_str);
 char *get_std_mac_str (char *mac_str);
+char *mac_ntoa (u_int8_t * mac);
 
 #endif
