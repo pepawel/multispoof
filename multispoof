@@ -5,6 +5,8 @@ REAL_IFACE=eth1
 TAP_IFACE=tap0
 MAIN_CHAIN=multispoof-main
 SUB_CHAIN=multispoof-sub
+# From my observations Windows SMB broadcasts are in max 12 minutes
+# intervals, so setting MIN_AGE to 15 minutes would be safe bet.
 MIN_AGE=30
 NATMAN_INTERVAL=5
 NDB_SOCKET="netdbsocket"
@@ -68,8 +70,7 @@ function register_mac
   local MAC=`ip link|grep -A 1 $IFACE | tail -n 1 | cut -d ' ' -f 6`
   if [ ! -z "$MAC" ]
   then
-    echo "setvar defmac $MAC" | socat UNIX-CONNECT:$NDB_SOCKET - \
-    > /dev/null
+    ndbexec $NDB_SOCKET setvar defmac $MAC
   else
     echo "Problem getting mac address of interface $IFACE."
     kill $$
