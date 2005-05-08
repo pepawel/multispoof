@@ -3,6 +3,7 @@
 #include <net/ethernet.h>	/* ETHER_ADDR_LEN */
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
+#include <glib.h>		/* g_strv_length, g_strsplit */
 
 #define PNAME "deta"
 
@@ -15,6 +16,8 @@
 
 /* Minimal age of host to be used. */
 int min_age;
+/* Array of banned ip addresses. */
+char **banned_tab;
 
 void
 packet_get_source_mac (mac, packet)
@@ -178,22 +181,40 @@ get_packet_proto (out_proto, packet, packet_s)
 int
 is_banned (struct in_addr ip)
 {
-  char *buf, *ptr;
-  int ret = -1;
+  int count, i;
+  char *ip_str = inet_ntoa(ip);
 
-  while (-1 == ret)
+  count = g_strv_length(banned_tab);
+  for (i = 0; i < count; i++)
+    if (0 == strcmp (banned_tab[i], ip_str))
+      return 1;
+
+  return -1;
+}
+
+void
+fetch_banned_tab ()
+{
+  char *buf;
+  int ret = -1, i, count;
+
+  while (1 != ret)
   {
     ret = execute_command (&buf, "getvar", "banned");
-    if (-1 == ret)
+    if (1 != ret)
     {
       fprintf (stderr, "%s: Waiting for banned list\n", PNAME);
       free (buf);
       sleep (1);
     }
   }
-  ptr = strstr (buf, inet_ntoa (ip));
+  
+  banned_tab = g_strsplit(buf, ":", strlen(buf));
   free (buf);
-  return (NULL == ptr ? -1 : 1);
+  count = g_strv_length(banned_tab);
+  for (i = 0; i < count; i++)
+    g_strstrip(banned_tab[i]);
+  return;
 }
 
 /* Performs various actions on packet and netdb.
@@ -258,12 +279,13 @@ mangle_packet (reply, reply_s, packet, packet_s)
       {
 	/* Sniffed ip exists in db with correct mac. */
       }
-
-      /* If it was ARP request, serve it. */
-      if (0x608 == proto)
-      {
+    }
+    else
+      fprintf(stderr, "%s: banned %s\n", PNAME, inet_ntoa(ip));
+    /* If it was ARP request, serve it. */
+    if (0x608 == proto)
+    {
 	result = create_arp_reply (reply, reply_s, packet, packet_s);
-      }
     }
   }
   else
@@ -313,6 +335,8 @@ main (int argc, char *argv[])
     return 1;
   }
 
+  fetch_banned_tab();
+  
   while (1)
   {
     ret = get_packet (packet, &packet_s);
@@ -331,6 +355,8 @@ main (int argc, char *argv[])
 	print_packet (reply, reply_s);
     }
   }
+
+  g_strfreev(banned_tab);
 
   ndb_cleanup ();
   return 0;

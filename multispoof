@@ -54,6 +54,12 @@ function spoof_pipeline
   cmac unspoof $MIN_AGE| tapio | cmac spoof $MIN_AGE | tx $IFACE tapio
 }
 
+function scanarp_pipeline
+{
+  local IFACE=$1
+  echo "scanarp: FIXME: implement me."
+}
+
 function deta_pipeline
 {
   local IFACE=$1
@@ -81,7 +87,7 @@ function register_mac
 
 function set_variables
 {
-  local BANNED="$GATEWAY_IP"
+  local BANNED="$GATEWAY_IP:0.0.0.0"
   ndbexec $NDB_SOCKET setvar banned "$BANNED"
 }
 
@@ -107,6 +113,7 @@ netdb &
 sleep 0.7 # netdb opening socket FIXME: find better solution
 set_variables
 spoof_pipeline $REAL_IFACE &
+scanarp_pipeline $REAL_IFACE &
 deta_pipeline $REAL_IFACE &
 setup_nf_rules
 natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL &
