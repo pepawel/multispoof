@@ -49,7 +49,7 @@ usage ()
   fprintf (stderr, "\t%s iface filter name\n", PNAME);
   fprintf (stderr, "Where iface is a interface to sniff on,\n");
   fprintf (stderr, "      filter is a pcap filter and name\n");
-  fprintf (stderr, "      is a string which shows in messages.");
+  fprintf (stderr, "      is a string which shows in messages.\n");
   return;
 }
 
