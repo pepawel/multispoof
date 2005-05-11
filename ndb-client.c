@@ -12,51 +12,53 @@
 #define PNAME "ndb-client"
 
 #include "validate.h"
+#include "ndb-client.h"
 
 /* Global socket for communication with netdb.
  * Use only by functions in this module. */
 FILE *s = NULL;
 
-/* Executes command with arg on netdb, allocates out_buf
- * for reply. If you want to execute command with multiple arguments
+/* Executes command with arg on netdb, fills msg_buf with reply.
+ * If you want to execute command with multiple arguments
  * pass them as one, space separated string.
  * Returns 1 on success, 0 on error, -1 on fatal or protocol error.
- * NOTE: For convenience, out_buf is allocated always - even on
- *       protocol error.
  * NOTE: Uses global s socket. */
 int
-execute_command (out_buf, command, arg)
-     char **out_buf;
+execute_command (msg_buf, command, arg)
+     char *msg_buf;
      char *command;
      char *arg;
 {
-  static char tmp_buf[128];
-  gchar **tab;
+  static char tmp_buf[MSG_BUF_SIZE];
   int result;
+  char *msg_start, *nl_ptr;
 
   /* Sanity check */
   if (NULL == s)
   {
-    *out_buf = g_strdup ("Not connected to netdb");
-    return -1;
-  }
-
-  fprintf (s, "%s %s\n", command, arg);
-  fflush (s);
-  fgets (tmp_buf, sizeof (tmp_buf), s);
-  tab = g_strsplit (tmp_buf, " ", 2);
-  if (g_strv_length (tab) < 2)
-  {
-    *out_buf = g_strdup ("Protocol error");
+    g_strlcpy (msg_buf, "Not connected to netdb", MSG_BUF_SIZE);
     result = -1;
   }
   else
   {
-    *out_buf = g_strdup (tab[1]);
-    g_strfreev (tab);
-    g_strstrip (*out_buf);
+    fprintf (s, "%s %s\n", command, arg);
+    fflush (s);
+    fgets (tmp_buf, MSG_BUF_SIZE, s);
 
-    result = (tmp_buf[0] == '+' ? 1 : 0);
+    msg_start = index (tmp_buf, ' ');
+    nl_ptr = index (tmp_buf, '\n');
+    if ((NULL == msg_start) || (NULL == nl_ptr))
+    {
+      g_strlcpy (msg_buf, "Protocol error", MSG_BUF_SIZE);
+      result = -1;
+    }
+    else
+    {
+      *nl_ptr = '\0';
+      g_strlcpy (msg_buf, msg_start + 1, MSG_BUF_SIZE);
+
+      result = (tmp_buf[0] == '+' ? 1 : 0);
+    }
   }
   return result;
 }
@@ -124,57 +126,63 @@ execute_command_long (out_vector, command, arg)
 /* Executes gethost command on netdb. On success fills mac, enabled
  * flag and returns 1. On failure returns -1. */
 int
-ndb_execute_gethost (mac, out_enabled, out_age, ip)
+ndb_execute_gethost (mac, out_age, out_test_age, out_enabled, out_cur_test,
+		     ip)
      u_int8_t *mac;
+     time_t *out_age;
+     time_t *out_test_age;
      int *out_enabled;
-     int *out_age;
+     int *out_cur_test;
      struct in_addr ip;
 {
   int ret, mac_len, result;
-  char *buf;
-  char *eptr, *aptr;
+  char buf[MSG_BUF_SIZE];
+  char *mac_ptr, *age_ptr, *test_age_ptr, *enabled_ptr, *cur_test_ptr;
   u_int8_t *mac_tmp;
 
-  ret = execute_command (&buf, "gethost", inet_ntoa (ip));
+  ret = execute_command (buf, "gethost", inet_ntoa (ip));
   if (1 == ret)
   {
-    /* Find enabled flag */
-    eptr = index (buf, ' ');
-    if (NULL == eptr)
+    /* Find substrings */
+    mac_ptr = buf;
+    if ((age_ptr = index (buf, ' ')) &&
+	(test_age_ptr = index (age_ptr + 1, ' ')) &&
+	(enabled_ptr = index (test_age_ptr + 1, ' ')) &&
+	(cur_test_ptr = index (enabled_ptr + 1, ' ')))
     {
-      fprintf (stderr, "[%s]: gethost returned malformed output 1.\n", PNAME);
-      exit (1);
+      /* Isolate strings */
+      *age_ptr = '\0';
+      *test_age_ptr = '\0';
+      *enabled_ptr = '\0';
+      *cur_test_ptr = '\0';
+
+      /* Export values */
+      if (0 == strcmp ("enabled", enabled_ptr + 1))
+	*out_enabled = 1;
+      else
+	*out_enabled = 0;
+      if (0 == strcmp ("test", cur_test_ptr + 1))
+	*out_cur_test = 1;
+      else
+	*out_cur_test = 0;
+
+      *out_age = strtoul (age_ptr + 1, NULL, 0);
+      *out_test_age = strtoul (test_age_ptr + 1, NULL, 0);
+      /* Convert mac in string form to array of bytes */
+      mac_tmp = libnet_hex_aton (mac_ptr, &mac_len);
+      /* ethernet mac == 6 bytes */
+      memcpy (mac, mac_tmp, 6);
+      g_free (mac_tmp);
+      result = 1;
     }
     else
     {
-      aptr = index (eptr + 1, ' ');
-      if (NULL == aptr)
-      {
-	fprintf (stderr, "[%s]: gethost returned malformed output 2.\n",
-		 PNAME);
-	exit (1);
-      }
-      else
-      {
-	*eptr = '\0';		/* Isolate mac from enabled flag */
-	*aptr = '\0';		/* Isolate enabled flag from age */
-	if (0 == strcmp ("enabled", eptr + 1))
-	  *out_enabled = 1;
-	else
-	  *out_enabled = 0;
-	*out_age = atoi (aptr + 1);
-	/* Convert mac in string form to array of bytes */
-	mac_tmp = libnet_hex_aton (buf, &mac_len);
-	/* ethernet mac == 6 bytes */
-	memcpy (mac, mac_tmp, 6);
-	g_free (mac_tmp);
-	result = 1;
-      }
+      fprintf (stderr, "[%s]: gethost returned malformed output 1.\n", PNAME);
+      result = -1;
     }
   }
   else
     result = -1;
-  g_free (buf);
   return result;
 }
 
@@ -184,11 +192,11 @@ ndb_execute_host (ip, mac)
      u_int8_t *mac;
 {
   int ret, result;
-  char *buf;
+  char buf[MSG_BUF_SIZE];
   char *params;
 
   params = g_strconcat (inet_ntoa (ip), " ", mac_ntoa (mac), NULL);
-  ret = execute_command (&buf, "host", params);
+  ret = execute_command (buf, "host", params);
   g_free (params);
   if (1 == ret)
   {
@@ -203,9 +211,7 @@ ndb_execute_host (ip, mac)
   }
   else
     result = -1;
-  g_free (buf);
   return result;
-
 }
 
 /* Fetches all IP addresses from tab and fill out_tab array.
@@ -213,35 +219,32 @@ ndb_execute_host (ip, mac)
  * Array should be freed after use.
  * Returns 1 on success, -1 otherwise. */
 int
-fetch_host_tab(struct in_addr **out_tab, int *out_count)
+fetch_host_tab (struct in_addr **out_tab, int *out_count)
 {
   char **text_tab;
   struct in_addr *ip_tab;
   int count, i, ret;
-  char *ptr;
-  
-  ret = execute_command_long(&text_tab, "dump", "");
+
+  ret = execute_command_long (&text_tab, "dump", "");
   if (1 == ret)
   {
-    count = g_strv_length(text_tab);
-    ip_tab = g_malloc(sizeof(struct in_addr) * count);
+    count = g_strv_length (text_tab);
+    ip_tab = g_malloc (sizeof (struct in_addr) * count);
     for (i = 0; i < count; i++)
     {
-      ptr = index(text_tab[i], ' ');
-      *ptr = '\0';
-      ret = inet_aton(text_tab[i], &(ip_tab[i]));
+      ret = inet_aton (text_tab[i], &(ip_tab[i]));
       if (ret == 0)
       {
-        fprintf(stderr, "%s: Invalid address in db (%s)\n",
-            PNAME, text_tab[i]);
-        exit(1);
+	fprintf (stderr, "%s: Invalid address in db (%s)\n",
+		 PNAME, text_tab[i]);
+	exit (1);
       }
     }
-    g_strfreev(text_tab);
+    g_strfreev (text_tab);
   }
   else
     return -1;
-  
+
   *out_tab = ip_tab;
   *out_count = count;
   return 1;

@@ -99,71 +99,47 @@ cmd_host (gchar ** tab, guint count, gchar ** out_msg)
 }
 
 int
-cmd_enable (gchar ** tab, guint count, gchar ** out_msg)
+cmd_do (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *ip;
   int ret;
 
-  if (count < 2)
+  if (count < 3)
   {
-    msg = "-ERR Too few arguments (ip address needed)\n";
+    msg = "-ERR Too few arguments\n";
   }
   else
   {
     /* Check if ip is in correct format, and rewrite
      * to standard format if possible */
-    ip = get_std_ip_str (tab[1]);
+    ip = get_std_ip_str (tab[2]);
     if (NULL == ip)
       msg = "-ERR Bad ip address\n";
     else
     {
-      ret = db_change_enabled (ip, 1);
+      if (0 == strcmp (tab[1], "enable"))
+	ret = db_change_enabled (ip, 1);
+      else if (0 == strcmp (tab[1], "disable"))
+	ret = db_change_enabled (ip, 0);
+      else if (0 == strcmp (tab[1], "start-test"))
+	ret = db_start_stop_test (ip, 1);
+      else if (0 == strcmp (tab[1], "stop-test"))
+	ret = db_start_stop_test (ip, 0);
+      else
+	ret = -2;
+
       g_free (ip);
       if (-1 == ret)
-	msg = "-ERR Enabling failed - entry not found\n";
-      else if (1 == ret)
-	msg = "+OK Enabling succeeded\n";
+	msg = "-ERR Operation failed - entry not found\n";
+      else if (-2 == ret)
+	msg = "-ERR Unrecognized operation\n";
       else
-	msg = "+OK Already enabled\n";
+	msg = "+OK Operation succeeded\n";
     }
   }
   *out_msg = g_strdup (msg);
   return 1;
 }
-
-int
-cmd_disable (gchar ** tab, guint count, gchar ** out_msg)
-{
-  char *msg, *ip;
-  int ret;
-
-  if (count < 2)
-  {
-    msg = "-ERR Too few arguments (ip address needed)\n";
-  }
-  else
-  {
-    /* Check if ip is in correct format, and rewrite
-     * to standard format if possible */
-    ip = get_std_ip_str (tab[1]);
-    if (NULL == ip)
-      msg = "-ERR Bad ip address\n";
-    else
-    {
-      ret = db_change_enabled (ip, 0);
-      g_free (ip);
-      if (-1 == ret)
-	msg = "-ERR Disabling failed - entry not found\n";
-      else if (1 == ret)
-	msg = "+OK Disabling succeeded\n";
-      else
-	msg = "+OK Already disabled\n";
-    }
-  }
-  *out_msg = g_strdup (msg);
-  return 1;
-}
-
 
 int
 cmd_remove (gchar ** tab, guint count, gchar ** out_msg)
@@ -200,7 +176,8 @@ int
 cmd_gethost (gchar ** tab, guint count, gchar ** out_msg)
 {
   char *msg, *mac, *ip;
-  int enabled, ret, age;
+  int enabled, cur_test, ret;
+  time_t age, test_age;
 
   if (count < 2)
   {
@@ -214,12 +191,14 @@ cmd_gethost (gchar ** tab, guint count, gchar ** out_msg)
       msg = g_strdup ("-ERR Bad ip address\n");
     else
     {
-      ret = db_gethost (&mac, &enabled, &age, ip);
+      ret = db_gethost (&mac, &age, &test_age, &enabled, &cur_test, ip);
       if (-1 == ret)
-	msg = g_strdup_printf ("-ERR No MAC found for %s\n", ip);
+	msg = g_strdup_printf ("-ERR No entry found for %s\n", ip);
       else
-	msg = g_strdup_printf ("+OK %s %s %d\n",
-			       mac, enabled ? "enabled" : "disabled", age);
+	msg = g_strdup_printf ("+OK %s %ld %ld %s %s\n",
+			       mac, age, test_age,
+			       enabled ? "enabled" : "disabled",
+			       cur_test ? "test" : "idle");
       g_free (ip);
     }
   }
@@ -240,30 +219,8 @@ cmd_dump (gchar ** tab, guint count, gchar ** out_msg)
   else
     status = "+OK Dump complete\n";
 
-  msg = g_strconcat (msg, status, NULL);
-  *out_msg = msg;
-  return 1;
-}
-
-int
-cmd_listenabled (gchar ** tab, guint count, gchar ** out_msg)
-{
-  char *msg;
-  char *status;
-  int age;
-
-  if (count < 2)
-  {
-    msg = g_strdup ("-ERR Too few arguments\n");
-  }
-  else
-  {
-    age = atoi (tab[1]);
-    msg = db_listenabled (age);
-    status = "+OK Dump complete\n";
-    msg = g_strconcat (msg, status, NULL);
-  }
-  *out_msg = msg;
+  *out_msg = g_strconcat (msg, status, NULL);
+  free (msg);
   return 1;
 }
 
@@ -273,9 +230,7 @@ command_t commands[] = {
   ,
   {"host", cmd_host}		/* Adds, replaces entry. Updates last active. */
   ,
-  {"enable", cmd_enable}	/* Sets enabled flag for entry. */
-  ,
-  {"disable", cmd_disable}	/* Unsets enabled flag for entry. */
+  {"do", cmd_do}		/* Sets enabled or cur_test flag for entry. */
   ,
   {"remove", cmd_remove}	/* Removes entry from db. */
   ,
@@ -285,9 +240,7 @@ command_t commands[] = {
   ,
   {"getvar", cmd_getvar}	/* Gets value of given variable. */
   ,
-  {"dump", cmd_dump}		/* Dumps ips and associated mac addresses. */
-  ,
-  {"listenabled", cmd_listenabled}	/* Dumps en. ips with age >= given */
+  {"dump", cmd_dump}		/* Dumps all ip addresses. */
   ,
   {(char *) NULL, (netdb_func_t *) NULL}
 };

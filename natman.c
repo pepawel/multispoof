@@ -19,29 +19,30 @@ usage ()
   return;
 }
 
-int
-fetch_enabled_list (GSList ** out_list, int age)
+void
+create_enabled_list (GSList ** out_list, int min_age)
 {
   GSList *list;
-  char **tab;
-  int i, count;
-  char age_text[21];
+  struct in_addr *tab;
+  time_t age, tmp1;
+  int i, count, ret, enabled, tmp2;
+  u_int8_t mac[6];
 
-  list = *out_list;
-
-  sprintf (age_text, "%d", age);
-  execute_command_long (&tab, "listenabled", age_text);
-
-  count = g_strv_length (tab);
-
-  for (i = 0; i < count; i++)
+  list = NULL;
+  ret = fetch_host_tab (&tab, &count);
+  if (1 == ret)
   {
-    list = g_slist_append (list, g_strdup (tab[i]));
+    for (i = 0; i < count; i++)
+    {
+      /* Check if current entry is old enough and is enabled. */
+      ndb_execute_gethost (mac, &age, &tmp1, &enabled, &tmp2, tab[i]);
+      if ((min_age > age) && (1 == enabled))
+	list = g_slist_append (list, g_strdup (inet_ntoa (tab[i])));
+    }
+    g_free (tab);
   }
-  g_strfreev (tab);
-
   *out_list = list;
-  return 1;
+  return;
 }
 
 int
@@ -157,29 +158,25 @@ main (int argc, char *argv[])
   old_list = NULL;
   while (1)
   {
-    new_list = NULL;
-    ret = fetch_enabled_list (&new_list, min_age);
-    if (1 == ret)
+    create_enabled_list (&new_list, min_age);
+    ret = compare_lists (new_list, old_list);
+    if (0 != ret)
     {
-      ret = compare_lists (new_list, old_list);
-      if (0 != ret)
+      update_nat_rules (new_list, nf_chain);
+      /* new_list becomes old_list */
+      if (NULL != old_list)
       {
-	update_nat_rules (new_list, nf_chain);
-	/* new_list becomes old_list */
-	if (NULL != old_list)
-	{
-	  g_slist_foreach (old_list, (GFunc) g_free, NULL);
-	  g_slist_free (old_list);
-	}
-	old_list = new_list;
+	g_slist_foreach (old_list, (GFunc) g_free, NULL);
+	g_slist_free (old_list);
       }
-      else if (NULL != new_list)
-      {
-	g_slist_foreach (new_list, (GFunc) g_free, NULL);
-	g_slist_free (new_list);
-      }
-      sleep (interval);
+      old_list = new_list;
     }
+    else if (NULL != new_list)
+    {
+      g_slist_foreach (new_list, (GFunc) g_free, NULL);
+      g_slist_free (new_list);
+    }
+    sleep (interval);
   }
 
   ndb_cleanup ();

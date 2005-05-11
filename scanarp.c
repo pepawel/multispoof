@@ -15,12 +15,12 @@
 /* Fills packet with arp request, out_packet_s with arp size.
  * Uses t_ip/s_ip/s_mac for target ip/source ip/source mac. */
 void
-create_arp_request(packet, out_packet_s, t_ip, s_ip, s_mac)
-  u_int8_t *packet;
-  int *out_packet_s;
-  struct in_addr t_ip;
-  struct in_addr s_ip;
-  u_int8_t *s_mac;
+create_arp_request (packet, out_packet_s, t_ip, s_ip, s_mac)
+     u_int8_t *packet;
+     int *out_packet_s;
+     struct in_addr t_ip;
+     struct in_addr s_ip;
+     u_int8_t *s_mac;
 {
   ethernet_packet_t *req_ethernet;
   arp_packet_t *req_arp;
@@ -91,22 +91,22 @@ main (int argc, char *argv[])
   interval = atoi (argv[2]);
   /* FIXME: next version should add random delays between arp
    * requests, but keep interval constant. Also there should be
-   * way to fingerprint interval. */
+   * no way to fingerprint interval. */
   /* FIXME: next version should send requests in random order. */
   /* FIXME: next version should use one of enabled entries for
    * source IP and MAC. Use of provided source IP-MAC pair only
    * when no entry is enabled. */
-  ret = inet_aton(argv[3], &s_ip);
+  ret = inet_aton (argv[3], &s_ip);
   if (0 == ret)
   {
-    fprintf(stderr, "%s: Invalid ip address\n", PNAME);
-    exit(1);
+    fprintf (stderr, "%s: Invalid ip address\n", PNAME);
+    exit (1);
   }
-  s_mac = libnet_hex_aton(argv[4], &mac_len);
+  s_mac = libnet_hex_aton (argv[4], &mac_len);
   if (NULL == s_mac)
   {
-    fprintf(stderr, "%s: Invalid mac address\n", PNAME);
-    exit(1);
+    fprintf (stderr, "%s: Invalid mac address\n", PNAME);
+    exit (1);
   }
 
   /* Connect to netdb */
@@ -119,22 +119,22 @@ main (int argc, char *argv[])
 
   while (1)
   {
-    ret = fetch_host_tab(&tab, &count);
+    ret = fetch_host_tab (&tab, &count);
     if (1 == ret)
     {
       for (i = 0; i < count; i++)
       {
-        create_arp_request(packet, &packet_s, tab[i], s_ip, s_mac);
-	      print_packet (packet, packet_s);
+	create_arp_request (packet, &packet_s, tab[i], s_ip, s_mac);
+	print_packet (packet, packet_s);
       }
-      free(tab);
+      free (tab);
     }
     else
-      fprintf(stderr, "%s: fetching host tab failed\n", PNAME);
+      fprintf (stderr, "%s: fetching host tab failed\n", PNAME);
     sleep (interval);
   }
 
-  free(s_mac);
+  free (s_mac);
   ndb_cleanup ();
   return 0;
 }

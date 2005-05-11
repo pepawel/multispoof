@@ -35,13 +35,15 @@ int min_age;
 int
 change_mac (u_char * packet, u_int16_t packet_s)
 {
-  int ret, result, age;
+  int ret, result;
   u_int8_t mac[6];
   struct in_addr ip_val;
+  time_t age, test_age;
+  int enabled, cur_test;
 
   const ethernet_packet_t *ethernet;
   const ip_packet_t *ip;
-  int ethernet_s, ip_s, enabled;
+  int ethernet_s, ip_s;
 
   /* Check for ip truncation */
   ethernet_s = sizeof (ethernet_packet_t);
@@ -54,17 +56,19 @@ change_mac (u_char * packet, u_int16_t packet_s)
     return -1;
   }
 
-  /* Extract ip address from packet and convert to string */
+  /* Extract ip address from packet and convert to string. */
   ip = (ip_packet_t *) (packet + ethernet_s);
-  /* Depending on spoof mode extract src or dst address */
+  /* Depending on spoof mode extract src or dst address. */
   ip_val = (spoof_mode ? ip->ip_src : ip->ip_dst);
 
-  /* Get mac from netdb. Enabled flag is ignored. */
-  ret = ndb_execute_gethost (mac, &enabled, &age, ip_val);
+  /* Get mac from netdb. Enabled flag and test age are ignored. */
+  ret =
+    ndb_execute_gethost (mac, &age, &test_age, &enabled, &cur_test, ip_val);
   if (1 == ret)
   {
-    /* Only if host is old enough can be used. */
-    if (age > min_age)
+    /* Host can be used only if:
+     * is old enough, and not (disabled and idle) */
+    if ((age > min_age) && !((0 == enabled) && (0 == cur_test)))
     {
       /* Do actual substitution */
       /* mac == 6 bytes */
@@ -80,7 +84,7 @@ change_mac (u_char * packet, u_int16_t packet_s)
   else
   {
     /* fprintf (stderr, "%s (%s): debug: host '%s' not in db\n", 
-	     PNAME, p_mode_string, inet_ntoa (ip_val)); */
+       PNAME, p_mode_string, inet_ntoa (ip_val)); */
     result = -1;
   }
   return result;
@@ -93,7 +97,8 @@ change_mac (u_char * packet, u_int16_t packet_s)
 int
 update_default_mac ()
 {
-  char *mac, *valid_mac;
+  char mac[MSG_BUF_SIZE];
+  char *valid_mac;
   int ret, result, mac_len;
 
   ret = -1;
@@ -101,7 +106,7 @@ update_default_mac ()
   {
     /* FIXME: here should be debug option check - if debug,
      *        print message: "Trying to get defmac..." */
-    ret = execute_command (&mac, "getvar", "defmac");
+    ret = execute_command (mac, "getvar", "defmac");
     usleep (100000);
   }
   /* Convert mac in string form to byte array */
@@ -121,7 +126,6 @@ update_default_mac ()
     result = 1;
   }
 
-  g_free (mac);
   return result;
 }
 

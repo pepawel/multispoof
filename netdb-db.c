@@ -13,7 +13,9 @@ typedef struct
 {
   char mac[MAC_TEXT_SIZE];	/* mac as ":"-separated string */
   time_t last_active;		/* When the host was last active in seconds */
+  time_t last_tested;		/* When the host was last tested in seconds */
   int enabled;			/* Flag set if host is ready to be used */
+  int cur_test;			/* Flag set if host is currently tested */
 } host_entry_t;
 
 /* Variables support */
@@ -61,14 +63,21 @@ db_free ()
 /* Allocates memory for new host entry and fills fields with defaults.
  * Returns host entry. */
 host_entry_t *
-_new_host_entry (char *mac, time_t time, int enabled)
+_new_host_entry (mac, a_time, t_time, enabled, cur_test)
+     char *mac;
+     time_t a_time;
+     time_t t_time;
+     int enabled;
+     int cur_test;
 {
   host_entry_t *e;
 
   e = g_malloc (sizeof (host_entry_t));
   g_strlcpy (e->mac, mac, MAC_TEXT_SIZE);
-  e->last_active = time;
+  e->last_active = a_time;
+  e->last_tested = t_time;
   e->enabled = enabled;
+  e->cur_test = cur_test;
   return e;
 }
 
@@ -94,14 +103,14 @@ db_add_replace_update (char *ip, char *mac)
   {
     /* Adding new entry */
     g_hash_table_insert (db, g_strdup (ip),
-			 _new_host_entry (mac, time (NULL), 0));
+			 _new_host_entry (mac, time (NULL), (time_t) 0, 0,
+					  0));
     result = 1;
   }
   else if (0 != strcmp (old_entry->mac, mac))
   {
     /* Modyfing existing entry */
-    g_hash_table_replace (db, g_strdup (ip),
-			  _new_host_entry (mac, time (NULL), 0));
+    g_strlcpy (old_entry->mac, mac, MAC_TEXT_SIZE);
     old_entry->last_active = time (NULL);
     result = 2;
   }
@@ -137,6 +146,28 @@ db_change_enabled (char *ip, int val)
   }
 }
 
+/* Updates enabled cur_test flag in host entry for given ip with
+ * given value. When val = 1 it means start of test.
+ * When val = 0 it stops test and fills last_tested with current time.
+ * Return -1 on error, 1 otherwise. */
+int
+db_start_stop_test (char *ip, int val)
+{
+  host_entry_t *e = g_hash_table_lookup (db, ip);
+
+  if (NULL == e)
+  {
+    return -1;
+  }
+  else
+  {
+    e->cur_test = val;
+    if (0 == val)
+      e->last_tested = time (NULL);
+    return 1;
+  }
+}
+
 /* Removes given ip from db. Return 1 if ip was found and removed,
  * -1 otherwise. */
 int
@@ -150,106 +181,55 @@ db_remove (char *ip)
 /* Given ip finds host entry, fills mac and enabled variabled
  * and returns 1. Returns 0 if entry was not found. */
 int
-db_gethost (char **out_mac, int *out_enabled, int *out_age, char *ip)
+db_gethost (out_mac, out_age, out_test_age, out_enabled, out_cur_test, ip)
+     char **out_mac;
+     time_t *out_age;
+     time_t *out_test_age;
+     int *out_enabled;
+     int *out_cur_test;
+     char *ip;
 {
   host_entry_t *e;
+  time_t now = time (NULL);
 
   e = g_hash_table_lookup (db, ip);
   if (NULL != e)
   {
     *out_mac = e->mac;
+    *out_age = now - e->last_active;
+    *out_test_age = now - e->last_tested;
     *out_enabled = e->enabled;
-    *out_age = time (NULL) - e->last_active;
+    *out_cur_test = e->cur_test;
     return 1;
   }
   else
     return -1;
 }
 
-/* Internal struct used by db_dump */
-typedef struct
-{
-  char *str;			/* String which is appended during dump operation */
-  char *format_string;		/* Format string for entry formatting */
-} _db_dump_str_t;
-
-/* Internal function to append entries to dump string */
+/* Internal function used by db_dump(). */
 static void
 _db_dump_append (gpointer ipp, gpointer entryp, gpointer dumpp)
 {
-  char *ip = (char *) ipp;
-  host_entry_t *e = (host_entry_t *) entryp;
-  _db_dump_str_t *dump = (_db_dump_str_t *) dumpp;
-  char *line;
+  char *new_dump;
 
-  line = g_strdup_printf (dump->format_string, ip, e->mac);
-  dump->str = g_strconcat (dump->str, line, NULL);
-  g_free (line);
-
+  new_dump = g_strconcat (*((char **) dumpp), ipp, "\n", NULL);
+  g_free (*((char **) dumpp));
+  (*((char **) dumpp)) = new_dump;
   return;
 }
 
-/* Function returns newly allocated string which is generated
- * using format_string for every entry in db. After use this
- * string should be freed.
- * When db is empty, then it returns empty string (need to be
- * freed anyway).
- *
- * Format string can use two strings: ip and mac (in that order)
- * 
- * Warning: you should take care to not allow user to pass
- * arbitrary format_strings to prevent format string attacks. */
-char *
-db_dump (char *format_string)
-{
-  _db_dump_str_t dump;
-
-  dump.str = g_strdup ("");
-  dump.format_string = g_strdup (format_string);
-
-  g_hash_table_foreach (db, _db_dump_append, &dump);
-
-  g_free (dump.format_string);
-  return dump.str;
-}
-
-/* Internal struct used by db_listenabled */
-typedef struct
-{
-  char *str;			/* String which is appended during dump operation */
-  time_t age;			/* Age of entry */
-} _db_listenabled_str_t;
-
-/* Internal function to append entries to dump string */
-static void
-_db_listenabled_append (gpointer ipp, gpointer entryp, gpointer dumpp)
-{
-  char *ip = (char *) ipp;
-  host_entry_t *e = (host_entry_t *) entryp;
-  _db_listenabled_str_t *dump = (_db_listenabled_str_t *) dumpp;
-
-  if ((1 == e->enabled) && ((time (NULL) - e->last_active) >= dump->age))
-  {
-    dump->str = g_strconcat (dump->str, ip, "\n", NULL);
-  }
-
-  return;
-}
-
-/* Function returns newly allocated string which is generated
- * for every entry in db which age is >= than given value. After use
- * this string should be freed.
+/* Function returns newly allocated string which is new line
+ * separated list of ips. After use this string should be freed.
  * When db is empty, then it returns empty string (need to be
  * freed anyway). */
 char *
-db_listenabled (int age)
+db_dump ()
 {
-  _db_listenabled_str_t dump;
+  char *dump;
 
-  dump.age = age;
-  dump.str = g_strdup ("");
-  g_hash_table_foreach (db, _db_listenabled_append, &dump);
-  return dump.str;
+  dump = g_strdup ("");
+  g_hash_table_foreach (db, _db_dump_append, &dump);
+  return dump;
 }
 
 /* Associates value with variable. Allocated memory for value.

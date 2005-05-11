@@ -259,16 +259,32 @@ serve_connections (int serversocket)
 void
 clean_up (int sig)
 {
-  int ret;
-  char *dump;
+  int i, ret;
+  char *dump, *mac;
+  char **tab;
+  time_t tmp1, tmp2;
+  int tmp3, tmp4;
   FILE *f;
 
   f = fopen (cachefile, "w");
   if (NULL != f)
   {
-    dump = db_dump ("host %s %s\n");
-    fprintf (f, dump);
+    /* Fetch dump from db and split into tab of ips. */
+    dump = db_dump ();
+    g_strstrip (dump);
+    tab = g_strsplit (dump, "\n", 0);
     g_free (dump);
+
+    /* For each ip get its info. */
+    for (i = 0; NULL != tab[i]; i++)
+    {
+      ret = db_gethost (&mac, &tmp1, &tmp2, &tmp3, &tmp4, tab[i]);
+      if (1 == ret)
+	fprintf (f, "host %s %s\n", tab[i], mac);
+      else
+	fprintf (stderr, "%s: gethost error when saving cache\n", PNAME);
+    }
+    g_strfreev (tab);
     fclose (f);
   }
   else

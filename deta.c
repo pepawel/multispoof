@@ -16,6 +16,7 @@
 
 /* Minimal age of host to be used. */
 int min_age;
+
 /* Array of banned ip addresses. */
 char **banned_tab;
 
@@ -126,14 +127,15 @@ create_arp_reply (reply, reply_s, request, request_s)
      u_int16_t request_s;
 {
   struct in_addr ip;
-  int ret, enabled, age;
+  int ret, enabled, cur_test;
+  time_t age, test_age;
   static u_int8_t mac[6];
 
   arp_get_target_ip (&ip, request);
 
   /* Get MAC address */
-  ret = ndb_execute_gethost (mac, &enabled, &age, ip);
-  if ((1 == ret) && (1 == enabled) && (age > min_age))
+  ret = ndb_execute_gethost (mac, &age, &test_age, &enabled, &cur_test, ip);
+  if ((1 == ret) && (age > min_age) && !((0 == enabled) && (0 == cur_test)))
   {
     /* Create arp reply */
     _fill_arp_reply (reply, reply_s, mac, request);
@@ -188,9 +190,9 @@ int
 is_banned (struct in_addr ip)
 {
   int count, i;
-  char *ip_str = inet_ntoa(ip);
+  char *ip_str = inet_ntoa (ip);
 
-  count = g_strv_length(banned_tab);
+  count = g_strv_length (banned_tab);
   for (i = 0; i < count; i++)
     if (0 == strcmp (banned_tab[i], ip_str))
       return 1;
@@ -201,25 +203,23 @@ is_banned (struct in_addr ip)
 void
 fetch_banned_tab ()
 {
-  char *buf;
+  char buf[MSG_BUF_SIZE];
   int ret = -1, i, count;
 
   while (1 != ret)
   {
-    ret = execute_command (&buf, "getvar", "banned");
+    ret = execute_command (buf, "getvar", "banned");
     if (1 != ret)
     {
       fprintf (stderr, "%s: Waiting for banned list\n", PNAME);
-      free (buf);
       sleep (1);
     }
   }
-  
-  banned_tab = g_strsplit(buf, ":", strlen(buf));
-  free (buf);
-  count = g_strv_length(banned_tab);
+
+  banned_tab = g_strsplit (buf, ":", 0);
+  count = g_strv_length (banned_tab);
   for (i = 0; i < count; i++)
-    g_strstrip(banned_tab[i]);
+    g_strstrip (banned_tab[i]);
   return;
 }
 
@@ -288,21 +288,21 @@ mangle_packet (reply, reply_s, packet, packet_s)
       }
     }
     else
-      fprintf(stderr, "%s: (debug) banned %s\n", PNAME, inet_ntoa(ip));
+      fprintf (stderr, "%s: (debug) banned %s\n", PNAME, inet_ntoa (ip));
     /* If it was ARP request, serve it. */
     if (0x608 == proto)
     {
       /* FIXME: debug */
       /*
-      fprintf(stderr, "%s: arp type %x\n", PNAME, arp_get_op(packet));
-      */
-      if (0x0100 == arp_get_op(packet))
+         fprintf(stderr, "%s: arp type %x\n", PNAME, arp_get_op(packet));
+       */
+      if (0x0100 == arp_get_op (packet))
       {
-        /* This is arp request - we can check db and eventually reply */
-	      result = create_arp_reply (reply, reply_s, packet, packet_s);
+	/* This is arp request - we can check db and eventually reply */
+	result = create_arp_reply (reply, reply_s, packet, packet_s);
       }
       else
-        result = -1;
+	result = -1;
     }
   }
   else
@@ -352,8 +352,8 @@ main (int argc, char *argv[])
     return 1;
   }
 
-  fetch_banned_tab();
-  
+  fetch_banned_tab ();
+
   while (1)
   {
     ret = get_packet (packet, &packet_s);
@@ -375,7 +375,7 @@ main (int argc, char *argv[])
     }
   }
 
-  g_strfreev(banned_tab);
+  g_strfreev (banned_tab);
 
   ndb_cleanup ();
   return 0;

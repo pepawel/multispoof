@@ -6,24 +6,22 @@
 
 #include "ndb-client.h"
 
-/* Executes getmac command on netdb count times */
+/* Executes gethost command on netdb count times */
 void
 test_netdb (int count)
 {
   int ret;
-  char *msg;
+  char msg[MSG_BUF_SIZE];
   int i;
 
   for (i = 0; i < count; i++)
   {
-    ret = execute_command (&msg, "getmac", "127.0.0.1");
+    ret = execute_command (msg, "gethost", "192.168.64.1");
     if (1 != ret)
     {
       fprintf (stderr, "execute_command: %s\n", msg);
     }
-    g_free (msg);
   }
-
   return;
 }
 

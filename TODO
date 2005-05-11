@@ -7,16 +7,11 @@ general:
   - only outgoing connections works
 
 deta:
-- sniff also arp replies to scanarp requests
-  - it needs to sniff broadcast and arp traffic
-  - it needs for deta to distinguish arp request from arp reply
-    in get_packet_proto()
-
-natman:
-- execute_command_long with empty input gives two element tab
-v whats with nth match - done
+- add support for netmask in banned ip list (to ban all networks
+  like 169.254.0.0/16)
 
 netdb:
+- fix memory leak (rss grows when ./test-netdb runs)
 - implement connection limit
 - fix bug which shows when
 	there is too much input data
@@ -24,9 +19,8 @@ netdb:
   pipeline should be stopped, but
   it isn't - why? - eof case
 
-multispoof:
-- pass to all rx instances bpf filter which
-  blocks invalid addresses (224.0.0.0, 169.254.0.0 etc.)
+multispoof, all:
+- use getopt for command line options parsing
 
 cmac:
 - something wrong, when pingin one of ourself addresses - check it

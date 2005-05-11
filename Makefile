@@ -11,7 +11,7 @@ NAME=multispoof-${VERSION}
 CHANGELOG_HACK=_darcs/current/Changelog
 
 # Program files
-all: tapio rx tx netdb cmac deta natman scanarp ndbexec
+all: tapio rx tx netdb cmac deta natman scanarp ndbexec conncheck
 tapio: tapio.o printpkt.o getpkt.o
 	${CC} ${LDFLAGS} $+ -o $@
 rx: rx.o printpkt.o
@@ -32,6 +32,9 @@ natman: natman.o ndb-client.o validate.o
 # FIXME: remove dependency on libnet from scanarp
 scanarp: scanarp.o printpkt.o ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
+# FIXME: remove dependency on libnet from conncheck
+conncheck: conncheck.o ndb-client.o validate.o
+	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 ndbexec: ndbexec.c ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 test-netdb: test-netdb.o ndb-client.o validate.o
@@ -39,7 +42,7 @@ test-netdb: test-netdb.o ndb-client.o validate.o
 	
 clean:
 	rm -f *.o *.c~ *.h~ tx rx tapio netdb cmac test-netdb \
-	deta natman ndbexec scanarp cscope.out netdbsocket
+	deta natman ndbexec scanarp conncheck cscope.out netdbsocket
 
 # Developement targets
 cs:
