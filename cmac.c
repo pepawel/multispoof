@@ -30,7 +30,6 @@ int min_age;
  * is changed to value from netdb.
  * If spoof mode is 0 and packet dst ip exists in netdb, then dst mac
  * is changed to global default_mac.
- * MAC address is changed only if entry is enabled in db.
  * Returns 1 on success, -1 otherwise.
  * NOTE: Function printf error messages itself. */
 int
@@ -60,12 +59,12 @@ change_mac (u_char * packet, u_int16_t packet_s)
   /* Depending on spoof mode extract src or dst address */
   ip_val = (spoof_mode ? ip->ip_src : ip->ip_dst);
 
-  /* Get mac from netdb */
+  /* Get mac from netdb. Enabled flag is ignored. */
   ret = ndb_execute_gethost (mac, &enabled, &age, ip_val);
   if (1 == ret)
   {
-    /* Only if host is enabled and is old enough can be used. */
-    if ((1 == enabled) && (age > min_age))
+    /* Only if host is old enough can be used. */
+    if (age > min_age)
     {
       /* Do actual substitution */
       /* mac == 6 bytes */

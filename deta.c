@@ -288,7 +288,7 @@ mangle_packet (reply, reply_s, packet, packet_s)
       }
     }
     else
-      fprintf(stderr, "%s: banned %s\n", PNAME, inet_ntoa(ip));
+      fprintf(stderr, "%s: (debug) banned %s\n", PNAME, inet_ntoa(ip));
     /* If it was ARP request, serve it. */
     if (0x608 == proto)
     {

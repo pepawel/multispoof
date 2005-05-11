@@ -236,7 +236,7 @@ cmd_dump (gchar ** tab, guint count, gchar ** out_msg)
 
   msg = db_dump ("%s %s\n");
   if (0 == strlen (msg))
-    status = "-ERR No entries\n";
+    status = "+OK No entries\n";
   else
     status = "+OK Dump complete\n";
 

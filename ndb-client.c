@@ -208,6 +208,45 @@ ndb_execute_host (ip, mac)
 
 }
 
+/* Fetches all IP addresses from tab and fill out_tab array.
+ * out_count is filled with array size.
+ * Array should be freed after use.
+ * Returns 1 on success, -1 otherwise. */
+int
+fetch_host_tab(struct in_addr **out_tab, int *out_count)
+{
+  char **text_tab;
+  struct in_addr *ip_tab;
+  int count, i, ret;
+  char *ptr;
+  
+  ret = execute_command_long(&text_tab, "dump", "");
+  if (1 == ret)
+  {
+    count = g_strv_length(text_tab);
+    ip_tab = g_malloc(sizeof(struct in_addr) * count);
+    for (i = 0; i < count; i++)
+    {
+      ptr = index(text_tab[i], ' ');
+      *ptr = '\0';
+      ret = inet_aton(text_tab[i], &(ip_tab[i]));
+      if (ret == 0)
+      {
+        fprintf(stderr, "%s: Invalid address in db (%s)\n",
+            PNAME, text_tab[i]);
+        exit(1);
+      }
+    }
+    g_strfreev(text_tab);
+  }
+  else
+    return -1;
+  
+  *out_tab = ip_tab;
+  *out_count = count;
+  return 1;
+}
+
 /* Establishes connection with netdb on socket socketname.
  * Returns 1 on success, -1 otherwise and set out_error to point
  * to static char array with error message (no need to free it). */

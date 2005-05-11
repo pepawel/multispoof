@@ -12,41 +12,8 @@
 #include "ndb-client.h"
 #include "netheaders.h"
 
-int
-fetch_host_tab(struct in_addr **out_tab, int *out_count)
-{
-  char **text_tab;
-  struct in_addr *ip_tab;
-  int count, i, ret;
-  char *ptr;
-  
-  ret = execute_command_long(&text_tab, "dump", "");
-  if (1 == ret)
-  {
-    count = g_strv_length(text_tab);
-    ip_tab = g_malloc(sizeof(struct in_addr) * count);
-    for (i = 0; i < count; i++)
-    {
-      ptr = index(text_tab[i], ' ');
-      *ptr = '\0';
-      ret = inet_aton(text_tab[i], &(ip_tab[i]));
-      if (ret == 0)
-      {
-        fprintf(stderr, "%s: Invalid address in db (%s)\n",
-            PNAME, text_tab[i]);
-        exit(1);
-      }
-    }
-    g_strfreev(text_tab);
-  }
-  else
-    return -1;
-  
-  *out_tab = ip_tab;
-  *out_count = count;
-  return 1;
-}
-
+/* Fills packet with arp request, out_packet_s with arp size.
+ * Uses t_ip/s_ip/s_mac for target ip/source ip/source mac. */
 void
 create_arp_request(packet, out_packet_s, t_ip, s_ip, s_mac)
   u_int8_t *packet;
@@ -122,8 +89,13 @@ main (int argc, char *argv[])
   }
   socketname = argv[1];
   interval = atoi (argv[2]);
-  /* FIXME: next version should pick IP and MAC randomly from db,
-   * and use provided IP-MAC pair only when db data is not usable. */
+  /* FIXME: next version should add random delays between arp
+   * requests, but keep interval constant. Also there should be
+   * way to fingerprint interval. */
+  /* FIXME: next version should send requests in random order. */
+  /* FIXME: next version should use one of enabled entries for
+   * source IP and MAC. Use of provided source IP-MAC pair only
+   * when no entry is enabled. */
   ret = inet_aton(argv[3], &s_ip);
   if (0 == ret)
   {
