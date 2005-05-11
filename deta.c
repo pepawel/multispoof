@@ -63,6 +63,15 @@ arp_get_target_ip (out_ip, packet)
   return;
 }
 
+u_int16_t
+arp_get_op (packet)
+     u_char *packet;
+{
+  arp_packet_t *arp = (arp_packet_t *) (packet + sizeof (ethernet_packet_t));
+
+  return arp->ar_op;
+}
+
 /* Fills reply using given MAC and info from given request.
  * Internal function used by create_arp_reply. */
 void
@@ -162,7 +171,6 @@ get_packet_proto (out_proto, packet, packet_s)
       result = -1;
     else
     {
-      /* FIXME: Check if it is arp request */
       result = 1;
     }
   }
@@ -175,8 +183,6 @@ get_packet_proto (out_proto, packet, packet_s)
   return result;
 }
 
-/* FIXME: banned list needs to be global array of ips fetches
- * only one time at initialisation. */
 /* Returns 1 if given ip is on banned list. */
 int
 is_banned (struct in_addr ip)
@@ -252,20 +258,16 @@ mangle_packet (reply, reply_s, packet, packet_s)
     }
     else if (0x608 == proto)	/* ARP */
     {
+      /* Gives correct IP both for requests and replies. */
       arp_get_source_ip (&ip, packet);
     }
 
-    /* Check if IP is not banned in netdb */
+    /* Check if IP is not banned. */
     if (1 != is_banned (ip))
     {
       /* IP is legal. Update db. */
       ret = ndb_execute_host (ip, mac);
-      if (-1 == ret)
-      {
-	fprintf (stderr, "%s: Error updating db with %s (%s)\n",
-		 PNAME, inet_ntoa (ip), mac_ntoa (mac));
-      }
-      else if (1 == ret)
+      if (1 == ret)
       {
 	fprintf (stderr, "%s: Adding host %s (%s) to db\n",
 		 PNAME, inet_ntoa (ip), mac_ntoa (mac));
@@ -275,9 +277,14 @@ mangle_packet (reply, reply_s, packet, packet_s)
 	fprintf (stderr, "%s: Updating entry for %s with mac %s\n",
 		 PNAME, inet_ntoa (ip), mac_ntoa (mac));
       }
-      else
+      else if (3 == ret)
       {
 	/* Sniffed ip exists in db with correct mac. */
+      }
+      else
+      {
+	fprintf (stderr, "%s: Error updating db with %s (%s). Code: %d\n",
+		 PNAME, inet_ntoa (ip), mac_ntoa (mac), ret);
       }
     }
     else
@@ -285,7 +292,17 @@ mangle_packet (reply, reply_s, packet, packet_s)
     /* If it was ARP request, serve it. */
     if (0x608 == proto)
     {
-	result = create_arp_reply (reply, reply_s, packet, packet_s);
+      /* FIXME: debug */
+      /*
+      fprintf(stderr, "%s: arp type %x\n", PNAME, arp_get_op(packet));
+      */
+      if (0x0100 == arp_get_op(packet))
+      {
+        /* This is arp request - we can check db and eventually reply */
+	      result = create_arp_reply (reply, reply_s, packet, packet_s);
+      }
+      else
+        result = -1;
     }
   }
   else
@@ -350,6 +367,8 @@ main (int argc, char *argv[])
     }
     else
     {
+      /* FIXME: debug */
+      /* fprintf(stderr, "%s: (debug) got packet\n", PNAME); */
       ret = mangle_packet (reply, &reply_s, packet, packet_s);
       if (1 == ret)
 	print_packet (reply, reply_s);

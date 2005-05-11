@@ -1,19 +1,22 @@
 Note: This file is temporary used in thesis.xml,
 do not move, delete or rename.
 
+general:
+- connections initiated from network to spoofed hosts don't work:
+  - it is because tap interface doesn't have ip aliases set up.
+  - only outgoing connections works
+
+deta:
+- sniff also arp replies to scanarp requests
+  - it needs to sniff broadcast and arp traffic
+  - it needs for deta to distinguish arp request from arp reply
+    in get_packet_proto()
+
 natman:
 - execute_command_long with empty input gives two element tab
 v whats with nth match - done
 
 netdb:
-- add min_age variable to netdb:
-  - gethost will return data only when host age is good
-- gethost should allow to specify miminal age of host to get
-  - if age of that host is lower then do not serve it
-  - cmac should look at age
-  - deta when replying to arps should also look at it
-  - find all gethost command executions in code
-
 - implement connection limit
 - fix bug which shows when
 	there is too much input data

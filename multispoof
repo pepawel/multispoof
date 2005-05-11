@@ -6,10 +6,13 @@ TAP_IFACE=tap0
 MAIN_CHAIN=multispoof-main
 SUB_CHAIN=multispoof-sub
 GATEWAY_IP="192.168.64.200"
+SCAN_IP="192.168.64.33"
+SCAN_MAC="52:54:00:12:34:57"
 # From my observations Windows SMB broadcasts are in max 12 minutes
 # intervals, so setting MIN_AGE to 15 minutes would be safe bet.
 MIN_AGE=30
 NATMAN_INTERVAL=5
+SCAN_INTERVAL=15
 NDB_SOCKET="netdbsocket"
 
 PATH=$COMPONENTS_DIR:$PATH
@@ -57,14 +60,15 @@ function spoof_pipeline
 function scanarp_pipeline
 {
   local IFACE=$1
-  echo "scanarp: FIXME: implement me."
+  scanarp $NDB_SOCKET $SCAN_INTERVAL $SCAN_IP $SCAN_MAC | \
+  tx $IFACE scanarp
 }
 
 function deta_pipeline
 {
   local IFACE=$1
-  rx $IFACE "ether broadcast" deta | deta $NDB_SOCKET $MIN_AGE | \
-  tx $IFACE deta
+  rx $IFACE "ether broadcast or arp" deta | deta $NDB_SOCKET $MIN_AGE \
+  | tx $IFACE deta
 }
 
 function conncheck
@@ -87,7 +91,7 @@ function register_mac
 
 function set_variables
 {
-  local BANNED="$GATEWAY_IP:0.0.0.0"
+  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255"
   ndbexec $NDB_SOCKET setvar banned "$BANNED"
 }
 

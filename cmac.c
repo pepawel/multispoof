@@ -80,8 +80,8 @@ change_mac (u_char * packet, u_int16_t packet_s)
   }
   else
   {
-    fprintf (stderr, "%s (%s): debug: host '%s' not in db\n",
-	     PNAME, p_mode_string, inet_ntoa (ip_val));
+    /* fprintf (stderr, "%s (%s): debug: host '%s' not in db\n", 
+	     PNAME, p_mode_string, inet_ntoa (ip_val)); */
     result = -1;
   }
   return result;
