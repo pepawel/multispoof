@@ -137,6 +137,10 @@ create_arp_reply (reply, reply_s, request, request_s)
   ret = ndb_execute_gethost (mac, &age, &test_age, &enabled, &cur_test, ip);
   if ((1 == ret) && (age > min_age) && !((0 == enabled) && (0 == cur_test)))
   {
+    /* FIXME: DEBUG */
+    /*
+       fprintf(stderr, "%s: (debug) t_ip: %s, arp reply will be send\n", PNAME, inet_ntoa(ip));
+     */
     /* Create arp reply */
     _fill_arp_reply (reply, reply_s, mac, request);
     return 1;
@@ -287,8 +291,10 @@ mangle_packet (reply, reply_s, packet, packet_s)
 		 PNAME, inet_ntoa (ip), mac_ntoa (mac), ret);
       }
     }
-    else
-      fprintf (stderr, "%s: (debug) banned %s\n", PNAME, inet_ntoa (ip));
+    /*
+       else
+       fprintf (stderr, "%s: (debug) banned %s\n", PNAME, inet_ntoa (ip));
+     */
     /* If it was ARP request, serve it. */
     if (0x608 == proto)
     {
@@ -298,6 +304,11 @@ mangle_packet (reply, reply_s, packet, packet_s)
        */
       if (0x0100 == arp_get_op (packet))
       {
+        /* FIXME: DEBUG */
+        /*
+	fprintf (stderr, "%s: (debug) arp reply to %s\n",
+		 PNAME, inet_ntoa (ip));
+        */
 	/* This is arp request - we can check db and eventually reply */
 	result = create_arp_reply (reply, reply_s, packet, packet_s);
       }

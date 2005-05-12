@@ -11,6 +11,7 @@ int ndb_execute_gethost (u_int8_t * mac, time_t * out_age,
 			 time_t * out_test_age, int *out_enabled,
 			 int *out_cur_test, struct in_addr ip);
 int ndb_execute_host (struct in_addr ip, u_int8_t * mac);
+int ndb_execute_do (char *op, struct in_addr ip);
 int fetch_host_tab (struct in_addr **out_tab, int *out_count);
 int ndb_init (char *socketname, char **out_error);
 void ndb_cleanup ();

@@ -36,7 +36,7 @@ create_enabled_list (GSList ** out_list, int min_age)
     {
       /* Check if current entry is old enough and is enabled. */
       ndb_execute_gethost (mac, &age, &tmp1, &enabled, &tmp2, tab[i]);
-      if ((min_age > age) && (1 == enabled))
+      if ((age > min_age) && (1 == enabled))
 	list = g_slist_append (list, g_strdup (inet_ntoa (tab[i])));
     }
     g_free (tab);

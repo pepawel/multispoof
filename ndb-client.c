@@ -214,6 +214,16 @@ ndb_execute_host (ip, mac)
   return result;
 }
 
+int
+ndb_execute_do (char *op, struct in_addr ip)
+{
+  char buf[MSG_BUF_SIZE];
+  char params[64];
+
+  sprintf (params, "%s %s", op, inet_ntoa (ip));
+  return execute_command (buf, "do", params);
+}
+
 /* Fetches all IP addresses from tab and fill out_tab array.
  * out_count is filled with array size.
  * Array should be freed after use.

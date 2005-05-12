@@ -1,0 +1,11 @@
+#!/bin/sh
+HOST="www.mbank.com.pl"
+PORT="443"
+
+echo "access-test: (debug) checking $_IP started"
+RESULT=1
+nmap -sT -P0 -n -p $PORT $HOST 2> /dev/null | \
+egrep "^$PORT" | grep -q "open" && RESULT=0
+echo "access-test: (debug) checking $_IP finished (result: $RESULT)"
+
+exit $RESULT

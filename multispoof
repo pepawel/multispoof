@@ -1,29 +1,38 @@
 #!/bin/sh
 
 COMPONENTS_DIR=.
-REAL_IFACE=eth1
-TAP_IFACE=tap0
-MAIN_CHAIN=multispoof-main
-SUB_CHAIN=multispoof-sub
-GATEWAY_IP="192.168.64.200"
-SCAN_IP="192.168.64.33"
+REAL_IFACE="eth1"
+TAP_IFACE="tap0"
+MAIN_CHAIN="multispoof-main"
+SUB_CHAIN="multispoof-sub"
+TEST_CHAIN="multispoof-test"
+GATEWAY_IP="192.168.1.200"
+SCAN_IP="192.168.63.200"
 SCAN_MAC="52:54:00:12:34:57"
 # From my observations Windows SMB broadcasts are in max 12 minutes
 # intervals, so setting MIN_AGE to 15 minutes would be safe bet.
-MIN_AGE=30
+MIN_AGE=60
+MIN_TEST_AGE=120 # for conncheck
 NATMAN_INTERVAL=5
+CONNCHECK_INTERVAL=6
 SCAN_INTERVAL=15
 NDB_SOCKET="netdbsocket"
+TEST_SCRIPT="/home/cog/Hack/projects/multispoof/access-test"
 
 PATH=$COMPONENTS_DIR:$PATH
 
 function setup_nf_rules
 {
+  MULTISPOOF_SID=`ps -o sid= $$`
+
   iptables -t nat -N $MAIN_CHAIN 2> /dev/null
   iptables -t nat -N $SUB_CHAIN 2> /dev/null
+  iptables -t nat -N $TEST_CHAIN 2> /dev/null
   iptables -t nat -F $MAIN_CHAIN
   iptables -t nat -F $SUB_CHAIN
   
+  iptables -t nat -A $MAIN_CHAIN -o $TAP_IFACE -m owner \
+    --sid-owner $MULTISPOOF_SID -j $TEST_CHAIN
   iptables -t nat -A $MAIN_CHAIN -j $SUB_CHAIN
   iptables -t nat -A $MAIN_CHAIN -j DROP
   iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
@@ -37,8 +46,10 @@ function clean_up_nf_rules
         2> /dev/null
   iptables -t nat -F $MAIN_CHAIN
   iptables -t nat -F $SUB_CHAIN
+  iptables -t nat -F $TEST_CHAIN
   iptables -t nat -X $MAIN_CHAIN
   iptables -t nat -X $SUB_CHAIN
+  iptables -t nat -X $TEST_CHAIN
 }
 
 function clean_up
@@ -71,11 +82,6 @@ function deta_pipeline
   | tx $IFACE deta
 }
 
-function conncheck
-{
-  echo conncheck: FIXME: implement me.
-}
-
 function register_mac
 {
   local IFACE=$1
@@ -91,7 +97,7 @@ function register_mac
 
 function set_variables
 {
-  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255"
+  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255:192.168.1.200"
   ndbexec $NDB_SOCKET setvar banned "$BANNED"
 }
 
@@ -100,8 +106,8 @@ function setup_ifaces
 {
   local REAL=$1
   local TAP=$2
-  local CIDR="192.168.64.33/24"
-  local GATEWAY_MAC="00:00:00:00:00:02"
+  local CIDR="192.168.63.200/18"
+  local GATEWAY_MAC="00:00:00:00:00:01"
   ip addr flush dev $REAL 2> /dev/null
   ip addr add $CIDR dev $TAP
   ip link set $TAP up
@@ -124,6 +130,7 @@ natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL &
 sleep 0.7 # tapio creating tap device FIXME: find better solution
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
-conncheck $TAP_IFACE
+conncheck $NDB_SOCKET $TEST_CHAIN $CONNCHECK_INTERVAL \
+  $MIN_AGE $MIN_TEST_AGE $TEST_SCRIPT
 # Wait for all children processes
 wait

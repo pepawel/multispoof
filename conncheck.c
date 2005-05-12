@@ -4,20 +4,83 @@
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
 #include <glib.h>
+#include <stdlib.h>		/* system */
+#include <sys/types.h>		/* WIFEXITED, WEXITSTATUS */
+#include <sys/wait.h>		/* WIFEXITED, WEXITSTATUS */
 
 #define PNAME "conncheck"
 
 #include "common.h"
 #include "ndb-client.h"
+#include "validate.h"		/* mac_ntoa */
+
+char *iptables_binary = "/sbin/iptables";
+char *test_script;
+
+int
+test_host (ip, mac, age, test_age, enabled, min_age, min_test_age, ch)
+     struct in_addr ip;
+     u_int8_t *mac;
+     time_t age;
+     time_t test_age;
+     int enabled;
+     int min_age;
+     int min_test_age;
+     char *ch;
+{
+  char *cmd;
+  int ret, result;
+
+  /* FIXME: DEBUG */
+  /*
+     fprintf(stderr, "%s: testing host %s\n", PNAME, inet_ntoa(ip));
+   */
+  /* Add SNAT rule. */
+  cmd = g_strdup_printf ("%s -t nat -I %s -j SNAT --to-source %s\n",
+			 iptables_binary, ch, inet_ntoa (ip));
+  ret = system (cmd);
+  free (cmd);
+
+  /* Execute test script with correct enviroment variables. */
+  cmd =
+    g_strdup_printf
+    ("_IP=\"%s\" _MAC=\"%s\" _AGE=\"%ld\" _TEST_AGE=\"%ld\" _ENABLED=\"%d\" _MIN_AGE=\"%d\" _MIN_TEST_AGE=\"%d\" _NF_CHAIN=\"%s\" %s\n",
+     inet_ntoa (ip), mac_ntoa (mac), age, test_age, enabled, min_age,
+     min_test_age, ch, test_script);
+  ret = system (cmd);
+  free (cmd);
+  if (WIFEXITED (ret))
+  {
+    if (0 == (WEXITSTATUS (ret)))
+      result = 1;
+    else
+      result = -1;
+  }
+  else
+  {
+    fprintf (stderr, "%s: test script exited abnormally (%s)\n",
+	     PNAME, inet_ntoa (ip));
+    result = -1;
+  }
+
+  /* Delete rules from test chain. */
+  cmd = g_strdup_printf ("%s -t nat -F %s\n", iptables_binary, ch);
+  ret = system (cmd);
+  free (cmd);
+
+  return result;
+}
 
 /* Prints usage. */
 void
 usage ()
 {
-  printf ("Usage:\n\t%s socket int min_age min_test_age\n", PNAME);
-  printf ("\twhere socket is local netdb socket, int is db poll\n");
-  printf ("\tinterval, min_age is how old host needs to be to be tested,\n");
-  printf ("\tand min_test_age is how often do tests.\n");
+  printf ("Usage:\n\t%s socket ch int min_age min_test_age script\n", PNAME);
+  printf ("\twhere socket is local netdb socket, ch is netfilter\n");
+  printf ("\tchain to use, int is db poll interval, min_age is how\n");
+  printf ("\told host needs to be to be tested, min_test_age is\n");
+  printf ("\thow often do tests, and script is a path to executable\n");
+  printf ("\tfile which is used to test connectivity.\n");
   return;
 }
 
@@ -30,25 +93,37 @@ main (int argc, char *argv[])
   int ret, i;
   char *socketname;
   int interval;
+  int min_age, min_test_age;
+  char *nf_chain;
 
   /* Array of hosts */
   struct in_addr *tab = NULL;
   int count = 0;
 
-  if (argc < 5)
+  /* gethost stuff */
+  u_int8_t mac[6];
+  int enabled, cur_test;
+  time_t age, test_age;
+  struct in_addr ip;
+
+  if (argc < 7)
   {
     usage ();
     exit (1);
   }
   socketname = argv[1];
-  interval = atoi (argv[2]);
+  nf_chain = argv[2];
+  interval = atoi (argv[3]);
+  min_age = atoi (argv[4]);
+  min_test_age = atoi (argv[5]);
+  test_script = argv[6];
   /* FIXME: next version should add random delays between tests,
    * but keep interval constant. Also there should be no
    * way to fingerprint interval. */
-  /* FIXME: next version should send requests in random order. */
-  /* FIXME: next version should use one of enabled entries for
-   * source IP and MAC. Use of provided source IP-MAC pair only
-   * when no entry is enabled. */
+  /* FIXME: next version should do tests in random order. */
+  /* FIXME: next version should execute custom scripts after
+   * entry is positively tested to emulate dhcp-request
+   * or something similiar. */
 
   /* Connect to netdb */
   ret = ndb_init (socketname, &msg);
@@ -65,22 +140,23 @@ main (int argc, char *argv[])
     {
       for (i = 0; i < count; i++)
       {
-	fprintf (stderr, "%s: FIXME\n", PNAME);
-	FIXME ndb_execute_gethost ();
+	ip = tab[i];
+	ret = ndb_execute_gethost (mac, &age, &test_age, &enabled,
+				   &cur_test, ip);
 
-	if ((age > min_age) && (test_age > min_test_age))
+	if ((1 == ret) && (age > min_age) && (test_age > min_test_age))
 	{
-	  ret = ndb_execute_test ("start", ip);
+	  ret = ndb_execute_do ("start-test", ip);
 	  if (1 == ret)
 	  {
-	    ret = test_host (ip etc);
-
+	    ret = test_host (ip, mac, age, test_age, enabled,
+			     min_age, min_test_age, nf_chain);
 	    if (1 == ret)
-	      ndb_execute_enable (ip);
+	      ndb_execute_do ("enable", ip);
 	    else
-	      ndb_execute_disable (ip);
+	      ndb_execute_do ("disable", ip);
 
-	    ret = ndb_execute_test ("stop", ip);
+	    ret = ndb_execute_do ("stop-test", ip);
 	    if (1 != ret)
 	    {
 	      fprintf (stderr, "%s: stopping test failed for %s\n",
@@ -93,6 +169,12 @@ main (int argc, char *argv[])
 		     PNAME, inet_ntoa (ip));
 	  }
 	}
+	/* FIXME: DEBUG */
+	/*
+	   else
+	   fprintf (stderr, "%s: (debug) not testing %s\n",
+	   PNAME, inet_ntoa(ip));
+	 */
       }
       free (tab);
     }

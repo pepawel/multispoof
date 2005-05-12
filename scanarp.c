@@ -34,7 +34,7 @@ create_arp_request (packet, out_packet_s, t_ip, s_ip, s_mac)
   /* Calculate size */
   *out_packet_s = sizeof (ethernet_packet_t) + sizeof (arp_packet_t);
   /* Create arp request */
-  memcpy (req_ethernet->ether_dhost, "\xf1\xf2\xf3\xf4\xf5\xf6", 6);
+  memcpy (req_ethernet->ether_dhost, "\xff\xff\xff\xff\xff\xff", 6);
   memcpy (req_ethernet->ether_shost, s_mac, 6);
   req_ethernet->ether_type = 0x0608;	/* ARP type in little endian */
   req_arp->ar_hrd = 0x0100;
