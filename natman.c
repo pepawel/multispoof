@@ -11,11 +11,12 @@ char *iptables_binary = "/sbin/iptables";
 void
 usage ()
 {
-  printf ("Usage:\n\t%s chain age interval\n", PNAME);
+  printf ("Usage:\n\t%s chain age interval socket\n", PNAME);
   printf ("\nwhere\tchain is iptables chain for rules storage,\n");
   printf
     ("\tage is minimal inactivity time when host is considered turned off,\n");
   printf ("\tinterval tells how often netdb is queried.\n");
+  printf ("\tsocket is local netdb socket.\n");
   return;
 }
 
@@ -135,9 +136,7 @@ main (int argc, char *argv[])
   char *nf_chain;
   GSList *new_list, *old_list;
 
-  socketname = "netdbsocket";
-
-  if (argc < 4)
+  if (argc < 5)
   {
     usage ();
     exit (1);
@@ -146,6 +145,7 @@ main (int argc, char *argv[])
   nf_chain = argv[1];
   min_age = atoi (argv[2]);
   interval = atoi (argv[3]);
+  socketname = argv[4];
 
   /* Connect to netdb */
   ret = ndb_init (socketname, &msg);

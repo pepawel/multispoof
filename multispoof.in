@@ -1,14 +1,14 @@
 #!/bin/sh
 
-COMPONENTS_DIR=.
+# FIXME: Dynamic configuration should be done with getopt
 REAL_IFACE="eth1"
 TAP_IFACE="tap0"
-MAIN_CHAIN="multispoof-main"
-SUB_CHAIN="multispoof-sub"
-TEST_CHAIN="multispoof-test"
+# SCAN_IP and GATEWAY_IP needs to be in the same logical network
 GATEWAY_IP="192.168.1.200"
+NETMASK="18"
 SCAN_IP="192.168.63.200"
 SCAN_MAC="52:54:00:12:34:57"
+GATEWAY_MAC="00:00:00:00:00:01"
 # From my observations Windows SMB broadcasts are in max 12 minutes
 # intervals, so setting MIN_AGE to 15 minutes would be safe bet.
 MIN_AGE=60
@@ -16,9 +16,23 @@ MIN_TEST_AGE=120 # for conncheck
 NATMAN_INTERVAL=5
 CONNCHECK_INTERVAL=6
 SCAN_INTERVAL=15
-NDB_SOCKET="netdbsocket"
-TEST_SCRIPT="/home/cog/Hack/projects/multispoof/access-test"
 
+# Static configuration created by make
+COMPONENTS_DIR=<COMPONENTS_DIR>
+CACHE_FILE=<CACHE_DIR>/netdb.cache
+
+# Internal variables
+NDB_DIR=`mktemp -d multispoof.XXXXXXXX` || FAIL=1
+if [ ! -z "$FAIL" ]
+then
+  echo "Couldn't create temporary directory."
+  exit 1
+fi
+NDB_SOCKET="$NDB_DIR/socket"
+MAIN_CHAIN="multispoof-main"
+SUB_CHAIN="multispoof-sub"
+TEST_CHAIN="multispoof-test"
+TEST_SCRIPT="${COMPONENTS_DIR}/access-test"
 PATH=$COMPONENTS_DIR:$PATH
 
 function setup_nf_rules
@@ -57,6 +71,7 @@ function clean_up
   trap 15
   # FIXME: restore configuration for $REAL_IFACE
   echo "multispoof: cleaning up"
+  rm -rf $NDB_DIR
   clean_up_nf_rules
   kill -SIGTERM -$$
 }
@@ -65,7 +80,8 @@ function spoof_pipeline
 {
   local IFACE=$1
   rx $IFACE "ip and not ether broadcast" tapio | \
-  cmac unspoof $MIN_AGE| tapio | cmac spoof $MIN_AGE | tx $IFACE tapio
+  cmac unspoof $MIN_AGE $NDB_SOCKET | tapio | \
+  cmac spoof $MIN_AGE $NDB_SOCKET | tx $IFACE tapio
 }
 
 function scanarp_pipeline
@@ -97,7 +113,7 @@ function register_mac
 
 function set_variables
 {
-  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255:192.168.1.200"
+  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255"
   ndbexec $NDB_SOCKET setvar banned "$BANNED"
 }
 
@@ -106,8 +122,7 @@ function setup_ifaces
 {
   local REAL=$1
   local TAP=$2
-  local CIDR="192.168.63.200/18"
-  local GATEWAY_MAC="00:00:00:00:00:01"
+  local CIDR="$SCAN_IP/$NETMASK"
   ip addr flush dev $REAL 2> /dev/null
   ip addr add $CIDR dev $TAP
   ip link set $TAP up
@@ -119,7 +134,7 @@ echo "multispoof: PID $$"
 
 trap clean_up 15 2
 
-netdb &
+netdb $NDB_SOCKET $CACHE_FILE &
 sleep 0.7 # netdb opening socket FIXME: find better solution
 set_variables
 spoof_pipeline $REAL_IFACE &

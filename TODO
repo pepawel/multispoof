@@ -1,6 +1,3 @@
-Note: This file is temporary used in thesis.xml,
-do not move, delete or rename.
-
 natman, conncheck:
 - use WIFEXITED, WIFSIGNALLED (man system), WEXITSTATUS
   to check exit status of iptables invocations.
@@ -11,6 +8,7 @@ general:
   - only outgoing connections works
 - there should be some mechanism to shutdown multispoof
   is one of its processes end.
+  - set -e + trap on ERR
 
 deta:
 - add support for netmask in banned ip list (to ban all networks

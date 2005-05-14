@@ -304,11 +304,11 @@ mangle_packet (reply, reply_s, packet, packet_s)
        */
       if (0x0100 == arp_get_op (packet))
       {
-        /* FIXME: DEBUG */
-        /*
-	fprintf (stderr, "%s: (debug) arp reply to %s\n",
-		 PNAME, inet_ntoa (ip));
-        */
+	/* FIXME: DEBUG */
+	/*
+	   fprintf (stderr, "%s: (debug) arp reply to %s\n",
+	   PNAME, inet_ntoa (ip));
+	 */
 	/* This is arp request - we can check db and eventually reply */
 	result = create_arp_reply (reply, reply_s, packet, packet_s);
       }

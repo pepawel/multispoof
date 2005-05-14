@@ -22,8 +22,8 @@
 /* Global variables, to make clean_up function work
  * when called from signal handling routine. */
 int serversocket;		/* Socket for accepting new clients */
-char *socketname = "netdbsocket";	/* File name of the socket */
-char *cachefile = "netdb.cache";	/* Name of the cache file */
+char *socketname;		/* File name of the socket */
+char *cachefile;		/* Name of the cache file */
 
 /* Use list of FILE pointers to populate fd_set given as fds_pointer */
 int
@@ -321,6 +321,15 @@ load_db_from_cache ()
   return;
 }
 
+void
+usage ()
+{
+  printf ("Usage: %s socket cache\n", PNAME);
+  printf ("Where socket is a name of local socket to listen on,\n");
+  printf ("cache is a name of file where cache is stored.\n");
+  return;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -328,6 +337,14 @@ main (int argc, char *argv[])
   struct sockaddr_un a;
   int ret;
   int len;
+
+  if (argc < 3)
+  {
+    usage ();
+    exit (1);
+  }
+  socketname = argv[1];
+  cachefile = argv[2];
 
   serversocket = socket (PF_UNIX, SOCK_STREAM, 0);
   if (serversocket == -1)

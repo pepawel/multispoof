@@ -4,7 +4,7 @@
 
 #define PNAME "test-netdb"
 
-#include "ndb-client.h"
+#include "../ndb-client.h"
 
 /* Executes gethost command on netdb count times */
 void

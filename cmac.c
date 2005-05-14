@@ -133,11 +133,12 @@ update_default_mac ()
 void
 usage ()
 {
-  printf ("Usage:\n\t%s mode min_age\n", PNAME);
+  printf ("Usage:\n\t%s mode min_age socket\n", PNAME);
   printf ("where mode can be:\n");
   printf ("\tspoof - for changing source mac\n");
   printf ("\tunspoof - for changing destination mac\n");
-  printf ("min_age specifices minimal age for entry to be valid\n");
+  printf ("\tmin_age specifices minimal age for entry to be valid\n");
+  printf ("\tsocket is local netdb socket.\n");
   return;
 }
 
@@ -150,9 +151,7 @@ main (int argc, char *argv[])
   int ret;
   char *socketname;
 
-  socketname = "netdbsocket";
-
-  if (argc < 3)
+  if (argc < 4)
   {
     usage ();
     return 1;
@@ -169,6 +168,7 @@ main (int argc, char *argv[])
   }
   p_mode_string = argv[1];
   min_age = atoi (argv[2]);
+  socketname = argv[3];
 
   /* Connect to netdb */
   ret = ndb_init (socketname, &msg);
