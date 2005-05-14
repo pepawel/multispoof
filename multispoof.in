@@ -141,7 +141,7 @@ spoof_pipeline $REAL_IFACE &
 scanarp_pipeline $REAL_IFACE &
 deta_pipeline $REAL_IFACE &
 setup_nf_rules
-natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL &
+natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL $NDB_SOCKET &
 sleep 0.7 # tapio creating tap device FIXME: find better solution
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
