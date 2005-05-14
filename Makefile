@@ -1,6 +1,6 @@
 # Installation paths
-USR_PREFIX=/tmp/usr/local
-VAR_PREFIX=/tmp/var/local
+USR_PREFIX=/usr/local
+VAR_PREFIX=/var/local
 
 COMPONENTS_DIR=${USR_PREFIX}/lib/multispoof
 BIN_DIR=${USR_PREFIX}/sbin
