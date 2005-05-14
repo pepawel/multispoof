@@ -22,7 +22,7 @@ COMPONENTS_DIR=<COMPONENTS_DIR>
 CACHE_FILE=<CACHE_DIR>/netdb.cache
 
 # Internal variables
-NDB_DIR=`mktemp -d multispoof.XXXXXXXX` || FAIL=1
+NDB_DIR=`mktemp -td multispoof.XXXXXXXX` || FAIL=1
 if [ ! -z "$FAIL" ]
 then
   echo "Couldn't create temporary directory."
