@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <net/ethernet.h>
 #include <sys/time.h>		/* select */
+#include <stdlib.h>		/* exit */
 
 /* tun/tap includes */
 #include <sys/types.h>		/* open, select */
@@ -32,6 +33,14 @@ struct sniff_ethernet
 #define max(a,b) ((a)>(b) ? (a):(b))
 #define TAP_PREFIX_SIZE 4
 
+void
+usage()
+{
+  printf("Usage: %s name\n", PNAME);
+  printf("\tWhere name is a name assigned to created tap device.\n");
+  return;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -43,6 +52,14 @@ main (int argc, char **argv)
   u_int16_t tap_packet_s;
   fd_set fds;
   int ret, error = 1;
+  char *tap_dev_name;
+
+  if (argc < 2)
+  {
+    usage();
+    exit(1);
+  }
+  tap_dev_name = argv[1];
 
   /* Prepare tap packet - put ip over ethernet proto in prefix */
   tap_packet[0] = 0;
@@ -50,7 +67,7 @@ main (int argc, char **argv)
   tap_packet[2] = 8;
   tap_packet[3] = 0;
 
-  /* Set tap device */
+  /* Open tap device */
   tap_fd = open ("/dev/net/tun", O_RDWR);
   if (tap_fd < 0)
   {
@@ -62,6 +79,7 @@ main (int argc, char **argv)
     /* Set tap parameters */
     memset (&ifr, 0, sizeof (ifr));
     ifr.ifr_flags |= IFF_TAP;
+    strcpy(ifr.ifr_name, tap_dev_name);
     ret = ioctl (tap_fd, TUNSETIFF, (void *) &ifr);
     if (ret < 0)
     {

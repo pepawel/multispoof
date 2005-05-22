@@ -1,31 +1,146 @@
 #!/bin/sh
 
-# FIXME: Dynamic configuration should be done with getopt
-REAL_IFACE="eth1"
-TAP_IFACE="tap0"
-# SCAN_IP and GATEWAY_IP needs to be in the same logical network
-GATEWAY_IP="192.168.1.200"
-NETMASK="18"
-SCAN_IP="192.168.63.200"
-SCAN_MAC="52:54:00:12:34:57"
-GATEWAY_MAC="00:00:00:00:00:01"
-# From my observations Windows SMB broadcasts are in max 12 minutes
-# intervals, so setting MIN_AGE to 15 minutes would be safe bet.
-MIN_AGE=60
-MIN_TEST_AGE=120 # for conncheck
-NATMAN_INTERVAL=5
-CONNCHECK_INTERVAL=6
-SCAN_INTERVAL=15
-
 # Static configuration created by make
 COMPONENTS_DIR=<COMPONENTS_DIR>
 CACHE_FILE=<CACHE_DIR>/netdb.cache
+VERSION=<VERSION>
+
+function usage
+{
+  echo "Usage: multispoof [-f] [-v] [-h] [-t <name>] -i <iface>"
+  echo ""
+  echo "  -i iface  Uses given network interface"
+  echo "  -t name   Assigns given name to tap device; default: tap0"
+  echo "  -f        Starts with flushed cache; default: don't flush"
+  echo "  -d        Dummy mode, exits after initial setup"
+  echo "  -v        Verbose mode"
+  echo "  -h        Shows this help"
+  echo "  -V        Displays the current version"
+  echo ""
+  exit
+}
+
+# FIXME: implement -f in netdb, -t in tapio
+
+FLUSH_CACHE=""
+VERBOSE_MODE=""
+DUMMY_MODE=""
+REAL_IFACE=""
+TAP_IFACE="tap0"
+while getopts Vdfvht:i: NAME
+do
+  case $NAME in
+  f) FLUSH_CACHE="-f"
+     ;;
+  d) DUMMY_MODE="-d"
+     ;;
+  v) VERBOSE_MODE="-v"
+     ;;
+  i) REAL_IFACE="$OPTARG"
+     ;;
+  t) TAP_IFACE="$OPTARG"
+     ;;
+  V) echo "multispoof version $VERSION"
+     exit
+     ;;
+  *) usage
+     ;;
+  esac
+done
+if [ -z "$REAL_IFACE" ]
+then
+  echo "multispoof: You need to specify interface to use."
+  exit 1
+fi
+
+if [ ! -z "$VERBOSE_MODE" ]
+then
+  echo "multispoof: Discovering network setup."
+fi
+
+# Defaults: all intervals and ages in seconds
+# How long the host needs to be quiet to be considered as inactive.
+MIN_AGE=300
+# How often individual host should be tested.
+MIN_TEST_AGE=3600
+# How often natman should poll netdb
+NATMAN_INTERVAL=5
+# How often conncheck should poll netdb
+CONNCHECK_INTERVAL=6
+# How often scanarp should send arp requests
+SCAN_INTERVAL=60
+
+GATEWAY_IP=`ip route | grep default | grep $REAL_IFACE | head -n 1 \
+            | cut -d " " -f 3`
+if [ -z "$GATEWAY_IP" ]
+then
+  echo "multispoof: Default gateway bound to specified interface required."
+  exit 1
+fi
+
+_IP_ADDR=`ip addr show dev $REAL_IFACE | egrep "inet\ " | head -n 1 \
+          | awk '{ print $2 }'`
+SCAN_IP=`echo $_IP_ADDR | cut -d "/" -f 1`
+if [ -z "$SCAN_IP" ]
+then
+  echo "multispoof: Couldn't get interface IP address."
+  exit 1
+fi
+
+SCAN_MAC=`ip link show dev $REAL_IFACE | grep "link/ether" \
+          | awk '{ print $2 }'`
+if [ -z "$SCAN_MAC" ]
+then
+  echo "multispoof: Couldn't get interface MAC address."
+  exit 1
+fi
+
+NETMASK=`echo $_IP_ADDR | cut -d "/" -f 2`
+if [ -z "$NETMASK" ]
+then
+  echo "multispoof: Couldn't get interface netmask."
+  exit 1
+fi
+
+GATEWAY_MAC=`/usr/sbin/arp -na $GATEWAY_IP | grep $REAL_IFACE \
+             | tail -n 1 | cut -d " " -f 4 | grep ":"`
+if [ -z "$GATEWAY_MAC" ]
+then
+  ping -c 1 -w 2 $GATEWAY_IP 2>&1 > /dev/null
+  GATEWAY_MAC=`/usr/sbin/arp -na $GATEWAY_IP | grep $REAL_IFACE \
+             | tail -n 1 | cut -d " " -f 4 | grep ":"`
+fi
+if [ -z "$GATEWAY_MAC" ]
+then
+  echo "multispoof: Couldn't obtain gateway\'s MAC address."
+  exit 1
+fi
+
+if [ ! -z "$VERBOSE_MODE" ]
+then
+  echo "multispoof: Real interface: $REAL_IFACE, tap interface: $TAP_IFACE"
+  echo "multispoof: Gateway ip: '$GATEWAY_IP' mac: '$GATEWAY_MAC'"
+  echo "multispoof: Scan ip: '$SCAN_IP/$NETMASK' mac: '$SCAN_MAC'"
+  echo "multispoof: Min age: $MIN_AGE, min test age: $MIN_TEST_AGE"
+  echo "multispoof: Intervals - natman: $NATMAN_INTERVAL, conncheck: $CONNCHECK_INTERVAL, scanarp: $SCAN_INTERVAL"
+fi
+
+if [ ! -z "$DUMMY_MODE" ]
+then
+  exit
+fi
+
+if [ `whoami` != "root" ]
+then
+  echo "multispoof: Root privileges required."
+  exit 1
+fi
 
 # Internal variables
 NDB_DIR=`mktemp -td multispoof.XXXXXXXX` || FAIL=1
 if [ ! -z "$FAIL" ]
 then
-  echo "Couldn't create temporary directory."
+  echo "multispoof: Couldn't create temporary directory."
   exit 1
 fi
 NDB_SOCKET="$NDB_DIR/socket"
@@ -78,10 +193,9 @@ function clean_up
 
 function spoof_pipeline
 {
-  local IFACE=$1
-  rx $IFACE "ip and not ether broadcast" tapio | \
-  cmac unspoof $MIN_AGE $NDB_SOCKET | tapio | \
-  cmac spoof $MIN_AGE $NDB_SOCKET | tx $IFACE tapio
+  rx $REAL_IFACE "ip and not ether broadcast" tapio | \
+  cmac unspoof $MIN_AGE $NDB_SOCKET | tapio $TAP_IFACE | \
+  cmac spoof $MIN_AGE $NDB_SOCKET | tx $REAL_IFACE tapio
 }
 
 function scanarp_pipeline
@@ -137,7 +251,7 @@ trap clean_up 15 2
 netdb $NDB_SOCKET $CACHE_FILE &
 sleep 0.7 # netdb opening socket FIXME: find better solution
 set_variables
-spoof_pipeline $REAL_IFACE &
+spoof_pipeline &
 scanarp_pipeline $REAL_IFACE &
 deta_pipeline $REAL_IFACE &
 setup_nf_rules
