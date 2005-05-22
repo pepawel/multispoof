@@ -1,31 +1,179 @@
 #!/bin/sh
 
-# Static configuration created by make
-COMPONENTS_DIR=<COMPONENTS_DIR>
-CACHE_FILE=<CACHE_DIR>/netdb.cache
-VERSION=<VERSION>
-
 function usage
 {
-  echo "Usage: multispoof [-f] [-v] [-h] [-t <name>] -i <iface>"
+  echo "Usage:"
+  echo "  multispoof [-fvh] [-a <age>] [-e <age>] [ -s <int>] [-t <name>] -i <iface>"
   echo ""
   echo "  -i iface  Uses given network interface"
-  echo "  -t name   Assigns given name to tap device; default: tap0"
+  echo "  -t name   Assigns given name to tap device; default: $TAP_IFACE"
   echo "  -f        Starts with flushed cache; default: don't flush"
+  echo "  -a        minimal age; default $MIN_AGE"
+  echo "  -e        minimal test age; default $MIN_TEST_AGE"
+  echo "  -s        arp scan interval; default $SCAN_INTERVAL"
   echo "  -d        Dummy mode, exits after initial setup"
   echo "  -v        Verbose mode"
   echo "  -h        Shows this help"
   echo "  -V        Displays the current version"
   echo ""
+  echo "All time related options have to be specified in seconds."
   exit
 }
+
+# Sets up netfilter rules
+function setup_nf_rules
+{
+  MULTISPOOF_SID=`ps -o sid= $$`
+
+  iptables -t nat -N $MAIN_CHAIN 2> /dev/null
+  iptables -t nat -N $SUB_CHAIN 2> /dev/null
+  iptables -t nat -N $TEST_CHAIN 2> /dev/null
+  iptables -t nat -F $MAIN_CHAIN
+  iptables -t nat -F $SUB_CHAIN
+  
+  iptables -t nat -A $MAIN_CHAIN -o $TAP_IFACE -m owner \
+    --sid-owner $MULTISPOOF_SID -j $TEST_CHAIN
+  iptables -t nat -A $MAIN_CHAIN -j $SUB_CHAIN
+  iptables -t nat -A $MAIN_CHAIN -j DROP
+  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
+     2>/dev/null
+  iptables -t nat -I POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN
+}
+
+# Cleans up netcfilter rules
+function clean_up_nf_rules
+{
+  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
+        2> /dev/null
+  iptables -t nat -F $MAIN_CHAIN
+  iptables -t nat -F $SUB_CHAIN
+  iptables -t nat -F $TEST_CHAIN
+  iptables -t nat -X $MAIN_CHAIN
+  iptables -t nat -X $SUB_CHAIN
+  iptables -t nat -X $TEST_CHAIN
+}
+
+# Restores IP address and default gateway on network interface
+function restore_iface_config
+{
+  ip addr add $SCAN_IP/$NETMASK dev $REAL_IFACE
+  ip route add default via $GATEWAY_IP
+}
+
+# Signal handler - shutdowns app gracefully
+function clean_up
+{
+  trap 15
+  echo "multispoof: cleaning up"
+  # Take down tap interface, so associated routes get cleaned
+  ip link set $TAP_IFACE down
+  # After tap interface is down, we can restore network config
+  restore_iface_config 
+  clean_up_nf_rules
+  # Remove netdb temporary directory
+  rm -rf $NDB_DIR
+  # Kill all processes
+  kill -SIGTERM -$$
+}
+
+function spoof_pipeline
+{
+  rx $REAL_IFACE "ip and not ether broadcast" tapio | \
+  cmac unspoof $MIN_AGE $NDB_SOCKET | tapio $TAP_IFACE | \
+  cmac spoof $MIN_AGE $NDB_SOCKET | tx $REAL_IFACE tapio
+}
+
+function scanarp_pipeline
+{
+  scanarp $NDB_SOCKET $SCAN_INTERVAL $SCAN_IP $SCAN_MAC | \
+  tx $REAL_IFACE scanarp
+}
+
+function deta_pipeline
+{
+  rx $REAL_IFACE "ether broadcast or arp" deta | deta $NDB_SOCKET \
+  $MIN_AGE | tx $REAL_IFACE deta
+}
+
+# Registers default mac in netdb
+function register_mac
+{
+  local IFACE=$1
+  local MAC=`ip link|grep -A 1 $IFACE | tail -n 1 | cut -d ' ' -f 6`
+  if [ ! -z "$MAC" ]
+  then
+    ndbexec $NDB_SOCKET setvar defmac $MAC
+  else
+    echo "Problem getting mac address of interface $IFACE."
+    kill $$
+  fi
+}
+
+# Sets banned list in netdb
+function set_variables
+{
+  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255"
+  ndbexec $NDB_SOCKET setvar banned "$BANNED"
+}
+
+# Moves configuration from real interface to tap interface
+function setup_ifaces
+{
+  local REAL=$1
+  local TAP=$2
+  local CIDR="$SCAN_IP/$NETMASK"
+  ip addr flush dev $REAL 2> /dev/null
+  ip addr add $CIDR dev $TAP
+  ip link set $TAP up
+  arp -i $TAP -s $GATEWAY_IP $GATEWAY_MAC
+  ip route add default via $GATEWAY_IP
+}
+
+# Returns if given socket exist
+function wait_for_socket
+{
+  local SOCKET=$1
+  while [ ! -S "$SOCKET" ]
+  do
+    sleep 0.1
+  done
+}
+
+# Returns if given network interface exist
+function wait_for_iface
+{
+  local IFACE=$1
+  while [ `ip link show dev $IFACE > /dev/null 2> /dev/null \
+           || echo false` ]
+  do
+    sleep 0.1
+  done
+}
+
+# Static configuration created by make
+COMPONENTS_DIR=<COMPONENTS_DIR>
+CACHE_FILE=<CACHE_DIR>/netdb.cache
+VERSION=<VERSION>
 
 FLUSH_CACHE=""
 VERBOSE_MODE=""
 DUMMY_MODE=""
 REAL_IFACE=""
 TAP_IFACE="tap0"
-while getopts Vdfvht:i: NAME
+# Defaults: all intervals and ages in seconds
+# How long the host needs to be quiet to be considered as inactive.
+MIN_AGE=300
+# How often individual host should be tested.
+MIN_TEST_AGE=3600
+# How often natman should poll netdb
+NATMAN_INTERVAL=5
+# How often conncheck should poll netdb
+CONNCHECK_INTERVAL=6
+# How often scanarp should send arp requests
+SCAN_INTERVAL=60
+
+# Parse commandline parameters
+while getopts Vdfvht:i:a:e:s: NAME
 do
   case $NAME in
   f) FLUSH_CACHE="-f"
@@ -38,6 +186,12 @@ do
      ;;
   t) TAP_IFACE="$OPTARG"
      ;;
+  a) MIN_AGE="$OPTARG"
+     ;;
+  e) MIN_TEST_AGE="$OPTARG"
+     ;;
+  s) SCAN_INTERVAL="$OPTARG"
+     ;;
   V) echo "multispoof version $VERSION"
      exit
      ;;
@@ -45,6 +199,7 @@ do
      ;;
   esac
 done
+
 if [ -z "$REAL_IFACE" ]
 then
   echo "multispoof: You need to specify interface to use."
@@ -53,20 +208,9 @@ fi
 
 if [ ! -z "$VERBOSE_MODE" ]
 then
+  echo "multispoof: PID $$"
   echo "multispoof: Discovering network setup."
 fi
-
-# Defaults: all intervals and ages in seconds
-# How long the host needs to be quiet to be considered as inactive.
-MIN_AGE=300
-# How often individual host should be tested.
-MIN_TEST_AGE=3600
-# How often natman should poll netdb
-NATMAN_INTERVAL=5
-# How often conncheck should poll netdb
-CONNCHECK_INTERVAL=6
-# How often scanarp should send arp requests
-SCAN_INTERVAL=60
 
 GATEWAY_IP=`ip route | grep default | grep $REAL_IFACE | head -n 1 \
             | cut -d " " -f 3`
@@ -134,7 +278,6 @@ then
   exit 1
 fi
 
-# Internal variables
 NDB_DIR=`mktemp -td multispoof.XXXXXXXX` || FAIL=1
 if [ ! -z "$FAIL" ]
 then
@@ -148,116 +291,21 @@ TEST_CHAIN="multispoof-test"
 TEST_SCRIPT="${COMPONENTS_DIR}/access-test"
 PATH=$COMPONENTS_DIR:$PATH
 
-function setup_nf_rules
-{
-  MULTISPOOF_SID=`ps -o sid= $$`
-
-  iptables -t nat -N $MAIN_CHAIN 2> /dev/null
-  iptables -t nat -N $SUB_CHAIN 2> /dev/null
-  iptables -t nat -N $TEST_CHAIN 2> /dev/null
-  iptables -t nat -F $MAIN_CHAIN
-  iptables -t nat -F $SUB_CHAIN
-  
-  iptables -t nat -A $MAIN_CHAIN -o $TAP_IFACE -m owner \
-    --sid-owner $MULTISPOOF_SID -j $TEST_CHAIN
-  iptables -t nat -A $MAIN_CHAIN -j $SUB_CHAIN
-  iptables -t nat -A $MAIN_CHAIN -j DROP
-  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
-     2>/dev/null
-  iptables -t nat -I POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN
-}
-
-function clean_up_nf_rules
-{
-  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
-        2> /dev/null
-  iptables -t nat -F $MAIN_CHAIN
-  iptables -t nat -F $SUB_CHAIN
-  iptables -t nat -F $TEST_CHAIN
-  iptables -t nat -X $MAIN_CHAIN
-  iptables -t nat -X $SUB_CHAIN
-  iptables -t nat -X $TEST_CHAIN
-}
-
-function clean_up
-{
-  trap 15
-  # FIXME: restore configuration for $REAL_IFACE
-  echo "multispoof: cleaning up"
-  rm -rf $NDB_DIR
-  clean_up_nf_rules
-  kill -SIGTERM -$$
-}
-
-function spoof_pipeline
-{
-  rx $REAL_IFACE "ip and not ether broadcast" tapio | \
-  cmac unspoof $MIN_AGE $NDB_SOCKET | tapio $TAP_IFACE | \
-  cmac spoof $MIN_AGE $NDB_SOCKET | tx $REAL_IFACE tapio
-}
-
-function scanarp_pipeline
-{
-  local IFACE=$1
-  scanarp $NDB_SOCKET $SCAN_INTERVAL $SCAN_IP $SCAN_MAC | \
-  tx $IFACE scanarp
-}
-
-function deta_pipeline
-{
-  local IFACE=$1
-  rx $IFACE "ether broadcast or arp" deta | deta $NDB_SOCKET $MIN_AGE \
-  | tx $IFACE deta
-}
-
-function register_mac
-{
-  local IFACE=$1
-  local MAC=`ip link|grep -A 1 $IFACE | tail -n 1 | cut -d ' ' -f 6`
-  if [ ! -z "$MAC" ]
-  then
-    ndbexec $NDB_SOCKET setvar defmac $MAC
-  else
-    echo "Problem getting mac address of interface $IFACE."
-    kill $$
-  fi
-}
-
-function set_variables
-{
-  local BANNED="$GATEWAY_IP:0.0.0.0:255.255.255.255"
-  ndbexec $NDB_SOCKET setvar banned "$BANNED"
-}
-
-# FIXME: get address from real device
-function setup_ifaces
-{
-  local REAL=$1
-  local TAP=$2
-  local CIDR="$SCAN_IP/$NETMASK"
-  ip addr flush dev $REAL 2> /dev/null
-  ip addr add $CIDR dev $TAP
-  ip link set $TAP up
-  arp -i $TAP -s $GATEWAY_IP $GATEWAY_MAC
-  ip route add default via $GATEWAY_IP
-}
-
-echo "multispoof: PID $$"
-
 trap clean_up 15 2
 
 netdb $NDB_SOCKET $CACHE_FILE $FLUSH_CACHE &
-sleep 0.7 # netdb opening socket FIXME: find better solution
+wait_for_socket $NDB_SOCKET
 set_variables
 spoof_pipeline &
-scanarp_pipeline $REAL_IFACE &
-deta_pipeline $REAL_IFACE &
+scanarp_pipeline &
+deta_pipeline &
 setup_nf_rules
 natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL $NDB_SOCKET &
-sleep 0.7 # tapio creating tap device FIXME: find better solution
+wait_for_iface $TAP_IFACE
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
 conncheck $NDB_SOCKET $TEST_CHAIN $CONNCHECK_INTERVAL \
-  $MIN_AGE $MIN_TEST_AGE $TEST_SCRIPT
-# Wait for all children processes
+  $MIN_AGE $MIN_TEST_AGE $TEST_SCRIPT &
+
+# Wait for all children processes.
 wait

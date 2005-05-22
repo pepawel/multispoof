@@ -104,5 +104,7 @@ dist: clean README VERSION
 	darcs dist --dist-name multispoof-`cat VERSION`
 	# Remove stuff from repository
 	rm ${CHANGELOG_HACK} ${README_HACK} ${VERSION_HACK}
+	# Sign tarball
+	gpg -ab multispoof-`cat VERSION`.tar.gz || true
 distclean: clean
 	rm -f README VERSION
