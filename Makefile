@@ -81,7 +81,7 @@ VERSION:
 	echo -n `darcs changes | egrep "\ \ tagged" | head -n 1 \
 	| cut -d " " -f 4`	> $@
 	darcs changes --last 1|head -n 2|tail -n 1|egrep -q "\ \ tagged" \
-	|| echo -n "plus" >> $@
+	|| echo -n plus`date +%Y%m%d` >> $@
 	echo "" >> $@
 indent:
 	# GNU indent style, but -nbad subsitituted with -bad,
