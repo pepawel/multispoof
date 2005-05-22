@@ -34,10 +34,10 @@ struct sniff_ethernet
 #define TAP_PREFIX_SIZE 4
 
 void
-usage()
+usage ()
 {
-  printf("Usage: %s name\n", PNAME);
-  printf("\tWhere name is a name assigned to created tap device.\n");
+  printf ("Usage: %s name\n", PNAME);
+  printf ("\tWhere name is a name assigned to created tap device.\n");
   return;
 }
 
@@ -56,8 +56,8 @@ main (int argc, char **argv)
 
   if (argc < 2)
   {
-    usage();
-    exit(1);
+    usage ();
+    exit (1);
   }
   tap_dev_name = argv[1];
 
@@ -79,7 +79,7 @@ main (int argc, char **argv)
     /* Set tap parameters */
     memset (&ifr, 0, sizeof (ifr));
     ifr.ifr_flags |= IFF_TAP;
-    strcpy(ifr.ifr_name, tap_dev_name);
+    strcpy (ifr.ifr_name, tap_dev_name);
     ret = ioctl (tap_fd, TUNSETIFF, (void *) &ifr);
     if (ret < 0)
     {

@@ -346,7 +346,7 @@ main (int argc, char *argv[])
   }
   socketname = argv[1];
   cachefile = argv[2];
-  if (argc > 3 && (0 == strcmp(argv[3], "-f")))
+  if (argc > 3 && (0 == strcmp (argv[3], "-f")))
     flush_cache = 1;
   else
     flush_cache = 0;
