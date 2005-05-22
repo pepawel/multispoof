@@ -324,9 +324,10 @@ load_db_from_cache ()
 void
 usage ()
 {
-  printf ("Usage: %s socket cache\n", PNAME);
+  printf ("Usage: %s socket cache [-f]\n", PNAME);
   printf ("Where socket is a name of local socket to listen on,\n");
   printf ("cache is a name of file where cache is stored.\n");
+  printf ("When -f option is present, netdb will flush saved cache.\n");
   return;
 }
 
@@ -336,7 +337,7 @@ main (int argc, char *argv[])
   /* socket stuff */
   struct sockaddr_un a;
   int ret;
-  int len;
+  int len, flush_cache;
 
   if (argc < 3)
   {
@@ -345,6 +346,10 @@ main (int argc, char *argv[])
   }
   socketname = argv[1];
   cachefile = argv[2];
+  if (argc > 3 && (0 == strcmp(argv[3], "-f")))
+    flush_cache = 1;
+  else
+    flush_cache = 0;
 
   serversocket = socket (PF_UNIX, SOCK_STREAM, 0);
   if (serversocket == -1)
@@ -375,7 +380,8 @@ main (int argc, char *argv[])
   db_init ();
 
   /* Fill db with data from cache */
-  load_db_from_cache ();
+  if (0 == flush_cache)
+    load_db_from_cache ();
 
   /* Catch signals which could stop the process */
   signal (SIGTERM, clean_up);

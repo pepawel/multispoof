@@ -20,8 +20,6 @@ function usage
   exit
 }
 
-# FIXME: implement -f in netdb, -t in tapio
-
 FLUSH_CACHE=""
 VERBOSE_MODE=""
 DUMMY_MODE=""
@@ -248,7 +246,7 @@ echo "multispoof: PID $$"
 
 trap clean_up 15 2
 
-netdb $NDB_SOCKET $CACHE_FILE &
+netdb $NDB_SOCKET $CACHE_FILE $FLUSH_CACHE &
 sleep 0.7 # netdb opening socket FIXME: find better solution
 set_variables
 spoof_pipeline &
