@@ -78,8 +78,11 @@ clean:
 README: README.html
 	lynx -dump $< > $@
 VERSION:
-	darcs changes | egrep "\ \ tagged" | head -n 1 | cut -d " " -f 4 \
-	> $@
+	echo -n `darcs changes | egrep "\ \ tagged" | head -n 1 \
+	| cut -d " " -f 4`	> $@
+	darcs changes --last 1|head -n 2|tail -n 1|egrep -q "\ \ tagged" \
+	|| echo -n "plus" >> $@
+	echo "" >> $@
 indent:
 	# GNU indent style, but -nbad subsitituted with -bad,
 	# and using -bli0 instead of -bli2
