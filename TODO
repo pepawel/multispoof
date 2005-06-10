@@ -1,3 +1,24 @@
+Modify nth match (only iptables part) to support more than 100 rules
+- submit patch
+
+Create mode of address harvesting which exploits static-arp-on-gateway
+setup. Send something from random mac and get reply from gateway,
+which has static arp entry for this IP. Remember IP and use it.
+
+Add netfilter DROP rules on physical interface, so dhcp-client
+would not interfere with multispoof (it won't communicate, so
+it won't assign ip address to physical interface).
+
+In Makefile: make dependency between multispoof target and Makefile.
+It will make install process idiot proff, when someone modify install
+paths in Makefile after compilation.
+
+Make debian livecd with multispoof installed (+libpcap CVS and
+nth netfilter patch) to make testing easier.
+
+Add Makefile target for binary packages creation with checkinstall
+(deb, rpm).
+
 natman, conncheck:
 - use WIFEXITED, WIFSIGNALLED (man system), WEXITSTATUS
   to check exit status of iptables invocations.
@@ -9,6 +30,7 @@ general:
 - there should be some mechanism to shutdown multispoof
   is one of its processes end.
   - set -e + trap on ERR
+  - hijack SIG_CHLD signal
 
 deta:
 - add support for netmask in banned ip list (to ban all networks

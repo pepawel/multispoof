@@ -96,8 +96,19 @@ update_nat_rules (GSList * list, char *nf_chain)
   char *cmd;
 
   count = g_slist_length (list);
-
-  fprintf (stderr, "%s: updating nat rules (count: %d)\n", PNAME, count);
+  /* Current iptables limit 'every' option to 100.
+   * FIXME: Use multiple counters or patch nth match
+   * (in iptables and kernel, because fields are 8-bit only) */
+  if (count > 100)
+  {
+    fprintf (stderr, "%s: updating nat rules (count: %d but using only 100 first ips)\n", PNAME, count);
+    count = 100;
+  }
+  else
+  {
+    fprintf (stderr, "%s: updating nat rules (count: %d)\n",
+        PNAME, count);
+  }
   /* Flush rules */
   cmd = g_strdup_printf ("%s -t nat -F %s\n", iptables_binary, nf_chain);
   ret = system (cmd);
@@ -105,7 +116,7 @@ update_nat_rules (GSList * list, char *nf_chain)
     fprintf (stderr, "%s: iptables call failed\n", PNAME);
   g_free (cmd);
   /* Add rules */
-  for (li = list, i = 0; li != NULL; li = li->next, i++)
+  for (li = list, i = 0; i < count; li = li->next, i++)
   {
     if (1 == count)
     {
