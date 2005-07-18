@@ -14,7 +14,7 @@
 #include "ndb-client.h"
 #include "validate.h"		/* mac_ntoa */
 
-char *iptables_binary = "/sbin/iptables";
+char *iptables_binary;
 char *test_script;
 
 int
@@ -75,12 +75,13 @@ test_host (ip, mac, age, test_age, enabled, min_age, min_test_age, ch)
 void
 usage ()
 {
-  printf ("Usage:\n\t%s socket ch int min_age min_test_age script\n", PNAME);
+  printf ("Usage:\n\t%s socket ch int min_age min_test_age script iptables_path\n", PNAME);
   printf ("\twhere socket is local netdb socket, ch is netfilter\n");
   printf ("\tchain to use, int is db poll interval, min_age is how\n");
   printf ("\told host needs to be to be tested, min_test_age is\n");
-  printf ("\thow often do tests, and script is a path to executable\n");
-  printf ("\tfile which is used to test connectivity.\n");
+  printf ("\thow often do tests, script is a path to executable\n");
+  printf ("\tfile which is used to test connectivity and\n");
+  printf ("\tiptables_path is a path to iptables binary.\n");
   return;
 }
 
@@ -106,7 +107,7 @@ main (int argc, char *argv[])
   time_t age, test_age;
   struct in_addr ip;
 
-  if (argc < 7)
+  if (argc < 8)
   {
     usage ();
     exit (1);
@@ -117,6 +118,7 @@ main (int argc, char *argv[])
   min_age = atoi (argv[4]);
   min_test_age = atoi (argv[5]);
   test_script = argv[6];
+  iptables_binary = argv[7];
   /* FIXME: next version should add random delays between tests,
    * but keep interval constant. Also there should be no
    * way to fingerprint interval. */

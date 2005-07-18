@@ -38,13 +38,21 @@ function setup_nf_rules
   iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
      2>/dev/null
   iptables -t nat -I POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN
+
+  # DNAT for all connections initiated from network, so
+  # they could reach this host.
+  iptables -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
+    2> /dev/null
+  iptables -t nat -I PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP
 }
 
-# Cleans up netcfilter rules
+# Cleans up netfilter rules
 function clean_up_nf_rules
 {
   iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
         2> /dev/null
+  iptables -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
+    2> /dev/null
   iptables -t nat -F $MAIN_CHAIN
   iptables -t nat -F $SUB_CHAIN
   iptables -t nat -F $TEST_CHAIN
@@ -171,6 +179,8 @@ NATMAN_INTERVAL=5
 CONNCHECK_INTERVAL=6
 # How often scanarp should send arp requests
 SCAN_INTERVAL=60
+# Where iptables can be found
+IPTABLES="/sbin/iptables"
 
 # Parse commandline parameters
 while getopts Vdfvht:i:a:e:s: NAME
@@ -265,6 +275,7 @@ then
   echo "multispoof: Scan ip: '$SCAN_IP/$NETMASK' mac: '$SCAN_MAC'"
   echo "multispoof: Min age: $MIN_AGE, min test age: $MIN_TEST_AGE"
   echo "multispoof: Intervals - natman: $NATMAN_INTERVAL, conncheck: $CONNCHECK_INTERVAL, scanarp: $SCAN_INTERVAL"
+  echo "multispoof: Iptables binary path: $IPTABLES"
 fi
 
 if [ ! -z "$DUMMY_MODE" ]
@@ -300,12 +311,12 @@ spoof_pipeline &
 scanarp_pipeline &
 deta_pipeline &
 setup_nf_rules
-natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL $NDB_SOCKET &
+natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL $NDB_SOCKET $IPTABLES &
 wait_for_iface $TAP_IFACE
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
 conncheck $NDB_SOCKET $TEST_CHAIN $CONNCHECK_INTERVAL \
-  $MIN_AGE $MIN_TEST_AGE $TEST_SCRIPT &
+  $MIN_AGE $MIN_TEST_AGE $TEST_SCRIPT $IPTABLES &
 
 # Wait for all children processes.
 wait

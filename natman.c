@@ -5,18 +5,20 @@
 
 #include "ndb-client.h"
 
-char *iptables_binary = "/sbin/iptables";
+char *iptables_binary;
 
 /* Prints usage. */
 void
 usage ()
 {
-  printf ("Usage:\n\t%s chain age interval socket\n", PNAME);
+  printf ("Usage:\n\t%s chain age interval socket iptables_path\n",
+      PNAME);
   printf ("\nwhere\tchain is iptables chain for rules storage,\n");
   printf
     ("\tage is minimal inactivity time when host is considered turned off,\n");
   printf ("\tinterval tells how often netdb is queried.\n");
   printf ("\tsocket is local netdb socket.\n");
+  printf ("\tiptables_path is a path to iptables binary.\n");
   return;
 }
 
@@ -147,7 +149,7 @@ main (int argc, char *argv[])
   char *nf_chain;
   GSList *new_list, *old_list;
 
-  if (argc < 5)
+  if (argc < 6)
   {
     usage ();
     exit (1);
@@ -157,6 +159,7 @@ main (int argc, char *argv[])
   min_age = atoi (argv[2]);
   interval = atoi (argv[3]);
   socketname = argv[4];
+  iptables_binary = argv[5];
 
   /* Connect to netdb */
   ret = ndb_init (socketname, &msg);

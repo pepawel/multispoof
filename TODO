@@ -1,57 +1,37 @@
-Make tapio separate mini-project (modify to add multiplatform support)
+Make test script more robust (it gives false negatives too often)
 
-Modify nth match (only iptables part) to support more than 100 rules
-- submit patch
+all components:
+- use getopt for command line options parsing
 
-Create mode of address harvesting which exploits static-arp-on-gateway
-setup. Send something from random mac and get reply from gateway,
-which has static arp entry for this IP. Remember IP and use it.
+Modify nth match to support more than 100 rules - submit patch
+Or: use multiple counters of nth module in multispoof.
 
-Add netfilter DROP rules on physical interface, so dhcp-client
-would not interfere with multispoof (it won't communicate, so
-it won't assign ip address to physical interface).
-
-In Makefile: make dependency between multispoof target and Makefile.
-It will make install process idiot proff, when someone modify install
-paths in Makefile after compilation.
-
-Make debian livecd with multispoof installed (+libpcap CVS and
-nth netfilter patch) to make testing easier.
-
-Add Makefile target for binary packages creation with checkinstall
-(deb, rpm).
-
-natman, conncheck:
-- use WIFEXITED, WIFSIGNALLED (man system), WEXITSTATUS
-  to check exit status of iptables invocations.
+deta:
+- add support for netmask in banned ip list (to ban all networks
+  like 169.254.0.0/16)
+- rethink banned list concept
 
 general:
-- connections initiated from network to spoofed hosts don't work:
-  - it is because tap interface doesn't have ip aliases set up.
-  - only outgoing connections works
 - there should be some mechanism to shutdown multispoof
   is one of its processes end.
   - set -e + trap on ERR
   - hijack SIG_CHLD signal
 
-deta:
-- add support for netmask in banned ip list (to ban all networks
-  like 169.254.0.0/16)
+natman, conncheck:
+- use WIFEXITED, WIFSIGNALLED (man system), WEXITSTATUS
+  to check exit status of iptables invocations.
 
 netdb:
-- fix memory leak (rss grows when ./test-netdb runs)
 - implement connection limit
 - fix bug which shows when
 	there is too much input data
-- when tx cannot start,
-  pipeline should be stopped, but
-  it isn't - why? - eof case
-
-multispoof, all:
-- use getopt for command line options parsing
 
 cmac:
 - something wrong, when pingin one of ourself addresses - check it
   - when pinging 192.168.64.97
   cmac (spoof): debug: host '124.191.192.168' not in db
 
+Make tapio separate mini-project (modify to add multiplatform support)
+
+Make debian livecd with multispoof installed (+libpcap CVS and
+nth netfilter patch) to make testing easier.

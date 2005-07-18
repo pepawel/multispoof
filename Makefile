@@ -25,7 +25,7 @@ CA_DIR_ESCAPED=${shell echo ${CACHE_DIR} | sed -e "s/\//\\\\\\//g"}
 
 # Program files
 all: multispoof ${COMPONENTS} README
-multispoof: multispoof.in VERSION
+multispoof: multispoof.in VERSION Makefile
 	sed -e 's/<COMPONENTS_DIR>/${CO_DIR_ESCAPED}/' < multispoof.in | \
 	sed -e 's/<CACHE_DIR>/${CA_DIR_ESCAPED}/' | \
 	sed -e 's/<VERSION>/${shell cat VERSION}/' > multispoof
