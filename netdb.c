@@ -163,7 +163,6 @@ get_and_serve (FILE * f)
   {
     /* Parse string */
     g_strstrip (command);
-    g_ascii_strdown (command, -1);
     ctab = g_strsplit (command, " ", 4);
 
     /* Execute command */
