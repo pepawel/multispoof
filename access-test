@@ -1,11 +1,49 @@
-#!/bin/sh
-HOST="www.mbank.com.pl"
+#!/bin/bash
+NAME="www.google.com"
 PORT="443"
 
-echo "access-test: (debug) checking $_IP started"
-RESULT=1
-nmap -sT -P0 -n -p $PORT $HOST 2> /dev/null | \
-egrep "^$PORT" | grep -q "open" && RESULT=0
-echo "access-test: (debug) checking $_IP finished (result: $RESULT)"
+# Get IP address of the host.
+RESULT=2
+C=3
+until [ $C -eq 0 ]
+do
+  HOST=`host -R 1 -W 1 $NAME 2> >(cat) | \
+        grep "has address" | tail -n 1 | cut -d " " -f 4`
+  if [ ! -z "$HOST" ]
+  then
+    break
+  else
+    C=$[ $C - 1 ]
+  fi
+done
+if [ ! -z "$HOST" ]
+then
+  # Check if the port is open.
+  RESULT=1
+  C=3
+  until [ $C -eq 0 ]
+  do
+    nmap -sT -P0 -n --host_timeout 2000 -p $PORT $HOST 2> /dev/null | \
+      egrep "^$PORT" | grep -q "open" && RESULT=0
+    if [ $RESULT -eq 0 ]
+    then
+      break
+    else
+      C=$[ $C - 1 ]
+    fi
+  done
+fi
+if [ $RESULT -eq 0 ]
+then
+  TEXT_RESULT="OK"
+else
+  if [ $RESULT -eq 1 ]
+  then
+    TEXT_RESULT="filtered"
+  else
+    TEXT_RESULT="dns problem"
+  fi
+fi
+echo "access-test: $_IP (result: $TEXT_RESULT)"
 
 exit $RESULT

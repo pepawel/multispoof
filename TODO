@@ -1,10 +1,11 @@
-Make test script more robust (it gives false negatives too often)
-
 Modify nth match to support more than 100 rules - submit patch
 Or: use multiple counters of nth module in multispoof.
 
 Make debian livecd with multispoof installed (+libpcap CVS and
 nth netfilter patch) to make testing easier.
+
+Add runtime checks for tools existence, nth & owner matches,
+SNAT & DNAT etc.
 
 all components:
 - use getopt for command line options parsing
@@ -16,7 +17,7 @@ deta:
 
 general:
 - there should be some mechanism to shutdown multispoof
-  is one of its processes end.
+  if one of its processes end.
   - set -e + trap on ERR
   - hijack SIG_CHLD signal
 
