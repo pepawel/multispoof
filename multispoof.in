@@ -11,6 +11,7 @@ function usage
   echo "  -a        minimal age; default $MIN_AGE"
   echo "  -e        minimal test age; default $MIN_TEST_AGE"
   echo "  -s        arp scan interval; default $SCAN_INTERVAL"
+  echo "  -p        path to iptables executable; default $IPTABLES"
   echo "  -d        Dummy mode, exits after initial setup"
   echo "  -v        Verbose mode"
   echo "  -h        Shows this help"
@@ -183,7 +184,7 @@ SCAN_INTERVAL=60
 IPTABLES="/sbin/iptables"
 
 # Parse commandline parameters
-while getopts Vdfvht:i:a:e:s: NAME
+while getopts Vdfvht:i:a:e:s:p: NAME
 do
   case $NAME in
   f) FLUSH_CACHE="-f"
@@ -201,6 +202,8 @@ do
   e) MIN_TEST_AGE="$OPTARG"
      ;;
   s) SCAN_INTERVAL="$OPTARG"
+     ;;
+  p) IPTABLES="$OPTARG"
      ;;
   V) echo "multispoof version $VERSION"
      exit

@@ -1,10 +1,13 @@
 Make test script more robust (it gives false negatives too often)
 
-all components:
-- use getopt for command line options parsing
-
 Modify nth match to support more than 100 rules - submit patch
 Or: use multiple counters of nth module in multispoof.
+
+Make debian livecd with multispoof installed (+libpcap CVS and
+nth netfilter patch) to make testing easier.
+
+all components:
+- use getopt for command line options parsing
 
 deta:
 - add support for netmask in banned ip list (to ban all networks
@@ -32,6 +35,3 @@ cmac:
   cmac (spoof): debug: host '124.191.192.168' not in db
 
 Make tapio separate mini-project (modify to add multiplatform support)
-
-Make debian livecd with multispoof installed (+libpcap CVS and
-nth netfilter patch) to make testing easier.
