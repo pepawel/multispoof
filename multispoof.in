@@ -27,14 +27,24 @@ function setup_nf_rules
   MULTISPOOF_SID=`ps -o sid= $$`
 
   iptables -t nat -N $MAIN_CHAIN 2> /dev/null
-  iptables -t nat -N $SUB_CHAIN 2> /dev/null
+  for i in `seq 0 9`
+  do
+    iptables -t nat -N ${SUB_CHAIN_PREFIX}-$i 2> /dev/null
+  done
   iptables -t nat -N $TEST_CHAIN 2> /dev/null
   iptables -t nat -F $MAIN_CHAIN
-  iptables -t nat -F $SUB_CHAIN
+  for i in `seq 0 9`
+  do
+    iptables -t nat -F ${SUB_CHAIN_PREFIX}-$i
+  done
   
   iptables -t nat -A $MAIN_CHAIN -o $TAP_IFACE -m owner \
     --sid-owner $MULTISPOOF_SID -j $TEST_CHAIN
-  iptables -t nat -A $MAIN_CHAIN -j $SUB_CHAIN
+  for i in `seq 0 9`
+  do
+    iptables -t nat -A $MAIN_CHAIN -m nth \
+      --counter 15 --every 10 --packet $i -j ${SUB_CHAIN_PREFIX}-$i
+  done
   iptables -t nat -A $MAIN_CHAIN -j DROP
   iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
      2>/dev/null
@@ -55,10 +65,16 @@ function clean_up_nf_rules
   iptables -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
     2> /dev/null
   iptables -t nat -F $MAIN_CHAIN
-  iptables -t nat -F $SUB_CHAIN
+  for i in `seq 0 9`
+  do
+    iptables -t nat -F ${SUB_CHAIN_PREFIX}-$i
+  done
   iptables -t nat -F $TEST_CHAIN
   iptables -t nat -X $MAIN_CHAIN
-  iptables -t nat -X $SUB_CHAIN
+  for i in `seq 0 9`
+  do
+    iptables -t nat -X ${SUB_CHAIN_PREFIX}-$i
+  done
   iptables -t nat -X $TEST_CHAIN
 }
 
@@ -300,7 +316,7 @@ then
 fi
 NDB_SOCKET="$NDB_DIR/socket"
 MAIN_CHAIN="multispoof-main"
-SUB_CHAIN="multispoof-sub"
+SUB_CHAIN_PREFIX="multispoof-sub"
 TEST_CHAIN="multispoof-test"
 TEST_SCRIPT="${COMPONENTS_DIR}/access-test"
 PATH=$COMPONENTS_DIR:$PATH
@@ -314,7 +330,8 @@ spoof_pipeline &
 scanarp_pipeline &
 deta_pipeline &
 setup_nf_rules
-natman $SUB_CHAIN $MIN_AGE $NATMAN_INTERVAL $NDB_SOCKET $IPTABLES &
+natman $SUB_CHAIN_PREFIX $MIN_AGE $NATMAN_INTERVAL \
+       $NDB_SOCKET $IPTABLES &
 wait_for_iface $TAP_IFACE
 register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE

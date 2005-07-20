@@ -13,7 +13,7 @@ usage ()
 {
   printf ("Usage:\n\t%s chain age interval socket iptables_path\n",
       PNAME);
-  printf ("\nwhere\tchain is iptables chain for rules storage,\n");
+  printf ("\nwhere\tchain is a prefix for iptables chains,\n");
   printf
     ("\tage is minimal inactivity time when host is considered turned off,\n");
   printf ("\tinterval tells how often netdb is queried.\n");
@@ -94,48 +94,63 @@ int
 update_nat_rules (GSList * list, char *nf_chain)
 {
   GSList *li;
-  int i, count, ret;
+  int i, count_exact, count_rounded, ret;
   char *cmd;
 
-  count = g_slist_length (list);
-  /* Current iptables limit 'every' option to 100.
-   * FIXME: Use multiple counters or patch nth match
-   * (in iptables and kernel, because fields are 8-bit only) */
-  if (count > 100)
+  count_exact = g_slist_length (list);
+  /* 10 counters x 100 packets = 1000 */
+  if (count_exact > 1000)
   {
-    fprintf (stderr, "%s: updating nat rules (count: %d but using only 100 first ips)\n", PNAME, count);
-    count = 100;
+    fprintf (stderr, "%s: updating nat rules (count: %d but using only 1000 first ips)\n", PNAME, count_exact);
+    count_exact = 1000;
   }
   else
   {
     fprintf (stderr, "%s: updating nat rules (count: %d)\n",
-        PNAME, count);
+        PNAME, count_exact);
   }
-  /* Flush rules */
-  cmd = g_strdup_printf ("%s -t nat -F %s\n", iptables_binary, nf_chain);
-  ret = system (cmd);
-  if (-1 == ret)
-    fprintf (stderr, "%s: iptables call failed\n", PNAME);
-  g_free (cmd);
-  /* Add rules */
-  for (li = list, i = 0; i < count; li = li->next, i++)
+  /* Flush rules in every sub chain. */
+  for (i = 0; i < 10; i++)
   {
-    if (1 == count)
-    {
-      cmd = g_strdup_printf ("%s -t nat -A %s -j SNAT --to-source %s\n",
-			     iptables_binary, nf_chain, (char *) li->data);
-    }
-    else
-    {
-      cmd =
-	g_strdup_printf
-	("%s -t nat -A %s -m nth --every %d --packet %d -j SNAT --to-source %s\n",
-	 iptables_binary, nf_chain, count, i, (char *) li->data);
-    }
+    cmd = g_strdup_printf ("%s -t nat -F %s-%d\n", iptables_binary,
+          nf_chain, i);
     ret = system (cmd);
     if (-1 == ret)
       fprintf (stderr, "%s: iptables call failed\n", PNAME);
     g_free (cmd);
+  }
+  /* Add rules to sub chains if there are any addresses. */
+  if (0 != count_exact)
+  {
+    count_rounded = count_exact + (10 - count_exact % 10);
+    for (li = list, i = 0; i < count_rounded; i++)
+    {
+      if (10 == count_rounded)
+      {
+        cmd = g_strdup_printf
+              ("%s -t nat -A %s-%d -j SNAT --to-source %s\n",
+			        iptables_binary, nf_chain, i % 10, (char *) li->data);
+      }
+      else
+      {
+        cmd =
+	g_strdup_printf
+	("%s -t nat -A %s-%d -m nth --counter %d --every %d --packet %d -j SNAT --to-source %s\n",
+	 iptables_binary, nf_chain,
+   i % 10, i % 10, count_rounded / 10, i / 10,
+   (char *) li->data);
+      }
+      fprintf(stderr, "%s", cmd);
+      ret = system (cmd);
+      if (-1 == ret)
+        fprintf (stderr, "%s: iptables call failed\n", PNAME);
+      g_free (cmd);
+   
+      /* Cycle through the list. */
+      li = li->next;
+      if (NULL == li)
+        li = list;
+    }
   }
   return 1;
 }

@@ -24,7 +24,7 @@ CO_DIR_ESCAPED=${shell echo ${COMPONENTS_DIR} | sed -e "s/\//\\\\\\//g"}
 CA_DIR_ESCAPED=${shell echo ${CACHE_DIR} | sed -e "s/\//\\\\\\//g"}
 
 # Program files
-all: multispoof ${COMPONENTS} README
+all: multispoof multispoof-dump ${COMPONENTS} README
 multispoof: multispoof.in VERSION Makefile
 	sed -e 's/<COMPONENTS_DIR>/${CO_DIR_ESCAPED}/' < multispoof.in | \
 	sed -e 's/<CACHE_DIR>/${CA_DIR_ESCAPED}/' | \
@@ -58,6 +58,9 @@ ndbexec: ndbexec.c ndb-client.o validate.o
 
 test-netdb: tests/test-netdb.o ndb-client.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
+# FIXME: remove dependency on libnet from conncheck
+multispoof-dump: multispoof-dump.o ndb-client.o validate.o
+	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
 
 install: all
 	${INSTALL} -m 755 -d ${COMPONENTS_DIR}
@@ -66,6 +69,7 @@ install: all
 	${INSTALL} -m 755 -d ${CACHE_DIR}
 	${INSTALL} -m 755 access-test ${COMPONENTS} ${COMPONENTS_DIR}
 	${INSTALL} -m 755 multispoof ${BIN_DIR}
+	${INSTALL} -m 755 multispoof-dump ${BIN_DIR}
 	${INSTALL} -m 644 README ${DOC_DIR}
 uninstall:
 	rm -rf ${COMPONENTS_DIR}
@@ -73,7 +77,8 @@ uninstall:
 	rm -rf ${CACHE_DIR}
 	rm -rf ${DOC_DIR}
 clean:
-	rm -f *.o tests/*.o *.c~ *.h~ multispoof ${COMPONENTS} test-netdb
+	rm -f *.o tests/*.o *.c~ *.h~ multispoof ${COMPONENTS} \
+		test-netdb multispoof-dump
 # Developement targets
 README: README.html
 	lynx -dump $< > $@
