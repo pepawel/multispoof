@@ -94,6 +94,10 @@ indent:
 	indent *.c *.h -bad -bap -nbc -bbo -bl -bli0 -bls -ncdb -nce -cp1 \
 	-cs -di2 -ndj -nfc1 -nfca -hnl -i2 -ip5 -lp -pcs -nprs -psl -saf \
 	-sai -saw -nsc -nsob
+upload:
+	# Uploads README to sourceforge
+	scp README.html \
+		c09@shell.sourceforge.net:/home/groups/m/mu/multispoof/htdocs/
 dist: clean README VERSION
 	# If file Changelog exists in repository - stop, because
 	# otherwise it would be deleted

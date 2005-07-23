@@ -135,12 +135,15 @@ update_nat_rules (GSList * list, char *nf_chain)
       {
         cmd =
 	g_strdup_printf
-	("%s -t nat -A %s-%d -m nth --counter %d --every %d --packet %d -j SNAT --to-source %s\n",
+	("%s -t nat -A %s-%d -m nth --every %d --packet %d --counter %d -j SNAT --to-source %s\n",
 	 iptables_binary, nf_chain,
-   i % 10, i % 10, count_rounded / 10, i / 10,
+   i % 10 /* chain suffix */,
+   count_rounded / 10 /* every */,
+   i / 10 /* packet */,
+   i % 10 /* counter */,
    (char *) li->data);
       }
-      fprintf(stderr, "%s", cmd);
+      /* fprintf(stderr, "%s", cmd); */
       ret = system (cmd);
       if (-1 == ret)
         fprintf (stderr, "%s: iptables call failed\n", PNAME);
@@ -152,6 +155,7 @@ update_nat_rules (GSList * list, char *nf_chain)
         li = list;
     }
   }
+  fprintf (stderr, "%s: updating nat rules finished.\n", PNAME);
   return 1;
 }
 

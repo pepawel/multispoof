@@ -1,5 +1,17 @@
-Modify nth match to support more than 100 rules - submit patch
-Or: use multiple counters of nth module in multispoof.
+Update README (usage, multispoof-dump etc.)
+
+Performance is bad - profile and optimize.
+
+Resetting connections which are using dead addresses.
+For example:
+1. User starts download.
+2. NAT assigns IP for this transmission.
+3. While transmission is running, the IP being used becomes active.
+4. Multispoof detects that, and blocks that IP (at cmac level).
+5. After a while, the IP is removed from NAT.
+6. The connection is still alive, but every packet is dropped.
+The connection should be ended with tcp reset or ICMP message,
+so that client won't wait too long for timeout.
 
 Make debian livecd with multispoof installed (+libpcap CVS and
 nth netfilter patch) to make testing easier.

@@ -43,7 +43,7 @@ function setup_nf_rules
   for i in `seq 0 9`
   do
     iptables -t nat -A $MAIN_CHAIN -m nth \
-      --counter 15 --every 10 --packet $i -j ${SUB_CHAIN_PREFIX}-$i
+      --every 10 --packet $i --counter 15 -j ${SUB_CHAIN_PREFIX}-$i
   done
   iptables -t nat -A $MAIN_CHAIN -j DROP
   iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
@@ -191,7 +191,7 @@ MIN_AGE=300
 # How often individual host should be tested.
 MIN_TEST_AGE=3600
 # How often natman should poll netdb
-NATMAN_INTERVAL=5
+NATMAN_INTERVAL=45
 # How often conncheck should poll netdb
 CONNCHECK_INTERVAL=6
 # How often scanarp should send arp requests

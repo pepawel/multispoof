@@ -318,7 +318,7 @@ mangle_packet (reply, reply_s, packet, packet_s)
   }
   else
   {
-    fprintf (stderr, "%s: Unknown protocol: %x (%d)\n", PNAME, proto, proto);
+    /* fprintf (stderr, "%s: Unknown protocol: %x (%d)\n", PNAME, proto, proto); */
   }
   return result;
 }
