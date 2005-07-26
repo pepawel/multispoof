@@ -1,6 +1,3 @@
-Make debian livecd with multispoof installed (+libpcap CVS and
-nth netfilter patch) to make testing easier.
-
 Maybe add sysctl tuning to main script?
 
 Performance is not good - profile and optimize.
