@@ -1,6 +1,9 @@
-Update README (usage, multispoof-dump etc.)
+Make debian livecd with multispoof installed (+libpcap CVS and
+nth netfilter patch) to make testing easier.
 
-Performance is bad - profile and optimize.
+Maybe add sysctl tuning to main script?
+
+Performance is not good - profile and optimize.
 
 Resetting connections which are using dead addresses.
 For example:
@@ -12,9 +15,6 @@ For example:
 6. The connection is still alive, but every packet is dropped.
 The connection should be ended with tcp reset or ICMP message,
 so that client won't wait too long for timeout.
-
-Make debian livecd with multispoof installed (+libpcap CVS and
-nth netfilter patch) to make testing easier.
 
 Add runtime checks for tools existence, nth & owner matches,
 SNAT & DNAT etc.

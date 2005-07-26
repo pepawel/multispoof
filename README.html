@@ -30,6 +30,10 @@
         padding-left: 70px;
         padding-right: 20%;
       }
+      pre
+      {
+        background: rgb(210,210,210);
+      }
 		</style>
 	</head>
 	<body>
@@ -67,7 +71,7 @@
       If you read Polish, you can get my thesis in papers
       section on <a href="http://cryptonix.org/">my page</a>.
       I've spent entire chapter on spoofing detection and prevention
-      techniques, so if you are ISP, you may be interested too.
+      techniques, so if you are an ISP, you may be interested too.
     </p>
     <h4>Legal</h4>
     <p>
@@ -98,6 +102,9 @@
       license and can be downloaded from
       sourceforge
 <a href="https://sourceforge.net/projects/multispoof/">project page</a>.
+      You will find there also livecd version &ndash; bootable Linux
+      CDROM, which includes multispoof and download
+      accelerator, ready to be used for some testing.
 		</p>
     <p>
       Version history can be found in Changelog file in tarball.
@@ -160,29 +167,32 @@
       from <a href="https://secure.cryptonix.org/">here</a>.
       If the tarball and signature are in current working directory,
       issue:
-      <pre>
-   $ gpg --verify multispoof-*.tar.gz.asc
-      </pre>
+    </p>
+    <pre>
+   $ gpg --verify multispoof-*.tar.gz.asc</pre>
+    <p>
       After positive verification, you can extract multispoof source
       distribution with:
-      <pre>
-   $ tar zxf multispoof-*.tar.gz
-      </pre>
+    </p>
+    <pre>
+   $ tar zxf multispoof-*.tar.gz</pre>
+    <p>
       Then enter newly created directory, optionally alter instalation
       paths at the beginning of Makefile, and execute:
-      <pre>
-   $ make
-      </pre>
+    </p>
+    <pre>
+   $ make</pre>
+    <p>
       After successful compilation, issue:
-      <pre>
-   $ su -c "make install"
-      </pre>
+    </p>
+    <pre>
+   $ su -c "make install"</pre>
+    <p>
       Note that the installation is required for program to run
       correctly. You can uninstall it with:
-      <pre>
-   $ su -c "make uninstall"
-      </pre>
     </p>
+    <pre>
+   $ su -c "make uninstall"</pre>
     <h4>Usage</h4>
     <p>
       Multispoof requires root provileges. Before running it you should
@@ -199,11 +209,13 @@
       Passing -h option to multispoof makes it show usage information.
       To launch the program and instruct it to use eth0 interface,
       invoke:
-      <pre>
-   # multispoof -i eth0
-      </pre>
+    </p>
+    <pre>
+   # multispoof -i eth0</pre>
+    <p>
       If everything is ok, you should see something like this:
-      <pre>
+    </p>
+    <pre>
    netdb: Listening on /tmp/multispoof.XX410BZG/socket
    rx (tapio): listening on eth0
    rx (deta): listening on eth0
@@ -211,9 +223,7 @@
    tx (tapio): using device eth0
    tx (deta): using device eth0
    tx (scanarp): using device eth0
-   cmac (unspoof): Using be:70:8d:4d:6a:a9 as default mac
-      </pre>
-    </p>
+   cmac (unspoof): Using be:70:8d:4d:6a:a9 as default mac</pre>
     <p>
       After first run, multispoof starts learning network
       addresses and save them to its database file. This file
@@ -234,42 +244,58 @@
       and get some data really fast :) <b>The more file chunks are
       downloaded in parallel, the higher throughput you get.</b>
     </p>
+    <p>
+      Before starting download, you should tune TCP settings in the
+      kernel, particularly keep-alive options, for better resistance
+      to transmission drops.
+      It can be done with /proc files modification, or
+      via sysctl utility.
+    </p>
+    <pre>
+   # sysctl -w net.ipv4.tcp_keepalive_intvl=5
+   # sysctl -w net.ipv4.tcp_keepalive_probes=3
+   # sysctl -w net.ipv4.tcp_keepalive_time=10
+   # sysctl -w net.ipv4.tcp_syn_retries=0</pre>
+    <p>
+      You can put all of the above options in a file and load it
+      using the -p switch. Note that keep-alive is an optional
+      feature of TCP stack, and not all network applications are
+      using it. Some of them implement keep-alive themselfes (ssh
+      for example), other simply don't. For testing I've used
+      <a href="http://prozilla.genesys.ro/">prozilla</a> download
+      accelerator patched to enable keep-alive
+      (well, the patch actually uncomments some code). The patch
+      is against prozilla 1.3.7.4, and can be found in the multispoof
+      tarball (prozilla-1.3.7.4.patch).
+      Bootable CDROM contains prozilla already patched.
+    </p>
     <h4>Internal state monitoring</h4>
     <p>
       Collected addresses can be listed by connecting to multispoof
-      address database through unix socket. The
-      <a href="http://www.dest-unreach.org/socat/">socat</a> tool can
-      be helpfull:
-      <pre>
-   # socat /tmp/multispoof.XXtIpgfL/socket -
-   +OK Welcome
-   dump
-   192.168.1.23
-   192.168.1.42
-   192.168.1.69
-   192.168.1.47
-   +OK Dump complete
-   quit
-   +OK Bye
-      </pre>
-    </p>
+      address database through unix socket. You can do it with
+      multispoof-dump tool:
+    </p>  
+    <pre>
+   # multispoof-dump /tmp/multispoof.XX410BZG/socket 
+   192.168.0.192 00:c0:df:ae:de:44 2 1122365430 disabled idle
+   192.168.0.76 00:30:4e:28:c0:fe 310 2 enabled idle
+   192.168.0.199 00:08:0d:c4:22:14 30 1122365430 disabled idle
+   192.168.0.33 00:30:84:42:b1:9c 41 1122365430 disabled idle
+   192.168.0.15 00:0a:cd:00:15:30 492 184 enabled idle</pre>
     <p>
-      Addresses currently used for spoofing can be displayed with
-      command:
-      <pre>
-   # iptables -t nat -nL multispoof-sub
-   Chain multispoof-sub (1 references)
-   target     prot opt source               destination         
-   SNAT       all  --  0.0.0.0/0            0.0.0.0/0 \
-   every 2th packet #0 to:192.168.1.23 
-   SNAT       all  --  0.0.0.0/0            0.0.0.0/0 \
-   every 2th packet #1 to:192.168.1.42 
-      </pre>
+      Assuming default value of -a option (300 seconds), addresses
+      currently used for spoofing can be displayed with following
+      pipeline:
     </p>
+    <pre>
+   # multispoof-dump | awk '{if ($5 == "enabled" &amp;&amp; $3 &gt;= 300) print $0}'
+   192.168.0.85 00:30:4e:28:c3:22 310 2 enabled idle
+   192.168.0.15 00:0a:cd:00:15:30 492 184 enabled idle</pre>
     <p>
       To check if load balancing works correctly, you can run ping
       and use tcpdump to sniff its traffic:
-      <pre>
+    </p>
+    <pre>
    # tcpdump -eni eth0 icmp
    tcpdump: WARNING: eth0: no IPv4 address assigned
    tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
@@ -297,9 +323,7 @@
     echo request seq 4
    23:21:31.098238 00:20:af:c4:6f:e3 &gt; 00:02:44:7b:09:11, ethertype IPv4 \
     (0x0800), length 98: IP 212.77.100.101 &gt; 192.168.1.42: icmp 64: \
-    echo reply seq 4
-      </pre>
-    </p>
+    echo reply seq 4</pre>
 		<h4>Author, contact</h4>
 		<p>
       This software was written by me, Paweł Pokrywka.
