@@ -35,7 +35,7 @@ tapio: tapio.o printpkt.o getpkt.o
 rx: rx.o printpkt.o
 	${CC} ${LDFLAGS} ${PCAP} $+ -o $@
 tx: tx.o getpkt.o
-	${CC} ${LDFLAGS} ${LIBNET} $+ -o $@
+	${CC} ${LDFLAGS} ${PCAP} $+ -o $@
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 # FIXME: remove dependency on libnet from cmac
