@@ -7,6 +7,7 @@
 #include <stdlib.h>		/* system */
 #include <sys/types.h>		/* WIFEXITED, WEXITSTATUS */
 #include <sys/wait.h>		/* WIFEXITED, WEXITSTATUS */
+#include <unistd.h> /* sleep */
 
 #define PNAME "conncheck"
 
@@ -20,7 +21,7 @@ char *test_script;
 int
 test_host (ip, mac, age, test_age, enabled, min_age, min_test_age, ch)
      struct in_addr ip;
-     u_int8_t *mac;
+     u_char *mac;
      time_t age;
      time_t test_age;
      int enabled;
@@ -102,7 +103,7 @@ main (int argc, char *argv[])
   int count = 0;
 
   /* gethost stuff */
-  u_int8_t mac[6];
+  u_char mac[6];
   int enabled, cur_test;
   time_t age, test_age;
   struct in_addr ip;

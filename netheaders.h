@@ -43,15 +43,15 @@ typedef struct
 {
   u_int16_t ar_hrd;		/* format of hardware address */
   u_int16_t ar_pro;		/* format of protocol address */
-  u_int8_t ar_hln;		/* length of hardware address (ETH_ADDR_LEN) */
-  u_int8_t ar_pln;		/* length of protocol address (IP_ADDR_LEN) */
+  u_char ar_hln;		/* length of hardware address (ETH_ADDR_LEN) */
+  u_char ar_pln;		/* length of protocol address (IP_ADDR_LEN) */
   u_int16_t ar_op;		/* operation */
   /* Payload - IP specific */
-  u_int8_t s_mac[6];		/* sender hardware address */
+  u_char s_mac[6];		/* sender hardware address */
   /* FIXME: why struct in_addr doesn't work? It seems it is too big */
-  u_int8_t s_ip[4];		/* sender ip address */
-  u_int8_t t_mac[6];		/* target mac address */
-  u_int8_t t_ip[4];		/* target ip address */
+  u_char s_ip[4];		/* sender ip address */
+  u_char t_mac[6];		/* target mac address */
+  u_char t_ip[4];		/* target ip address */
 } arp_packet_t;
 
 #endif

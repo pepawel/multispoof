@@ -1,5 +1,13 @@
 #include <stdio.h>
 #include <glib.h>
+#include <string.h> /* strcmp */
+#include <stdlib.h> /* system, exit, atoi */
+#include <unistd.h> /* sleep */
+
+/* inet_ntoa */
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PNAME "natman"
 
@@ -29,7 +37,7 @@ create_enabled_list (GSList ** out_list, int min_age)
   struct in_addr *tab;
   time_t age, tmp1;
   int i, count, ret, enabled, tmp2;
-  u_int8_t mac[6];
+  u_char mac[6];
 
   list = NULL;
   ret = fetch_host_tab (&tab, &count);

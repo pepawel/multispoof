@@ -3,6 +3,7 @@
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
 #include <glib.h>
+#include <stdlib.h> /* exit, free */
 
 #define PNAME "multispoof-dump"
 

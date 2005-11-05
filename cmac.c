@@ -3,7 +3,9 @@
 #include <net/ethernet.h>	/* ETHER_ADDR_LEN */
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
-#include <libnet.h>		/* libnet_hex_aton */
+#include <string.h> /* memcpy, strcmp */
+#include <unistd.h> /* usleep */
+#include <stdlib.h> /* atoi */
 
 #define PNAME "cmac"
 
@@ -19,7 +21,7 @@ char *p_mode_string;		/* for human */
 int spoof_mode;			/* for program */
 
 /* Default mac - used in uspoof mode */
-u_int8_t *default_mac;
+u_char *default_mac;
 
 /* Minimal age - only older entries are used */
 int min_age;
@@ -36,7 +38,7 @@ int
 change_mac (u_char * packet, u_int16_t packet_s)
 {
   int ret, result;
-  u_int8_t mac[6];
+  u_char mac[6];
   struct in_addr ip_val;
   time_t age, test_age;
   int enabled, cur_test;

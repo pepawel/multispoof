@@ -4,6 +4,8 @@
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
 #include <glib.h>		/* g_strv_length, g_strsplit */
+#include <unistd.h> /* sleep */
+#include <stdlib.h> /* exit, atoi */
 
 #define PNAME "deta"
 
@@ -22,7 +24,7 @@ char **banned_tab;
 
 void
 packet_get_source_mac (mac, packet)
-     u_int8_t *mac;
+     u_char *mac;
      u_char *packet;
 {
   ethernet_packet_t *ethernet = (ethernet_packet_t *) packet;
@@ -77,9 +79,9 @@ arp_get_op (packet)
  * Internal function used by create_arp_reply. */
 void
 _fill_arp_reply (out_reply, out_reply_s, mac, request)
-     u_int8_t *out_reply;
+     u_char *out_reply;
      u_int16_t *out_reply_s;
-     u_int8_t *mac;
+     u_char *mac;
      u_char *request;
 {
   ethernet_packet_t *req_ethernet;
@@ -129,7 +131,7 @@ create_arp_reply (reply, reply_s, request, request_s)
   struct in_addr ip;
   int ret, enabled, cur_test;
   time_t age, test_age;
-  static u_int8_t mac[6];
+  static u_char mac[6];
 
   arp_get_target_ip (&ip, request);
 
@@ -241,7 +243,7 @@ mangle_packet (reply, reply_s, packet, packet_s)
 {
   int ret;
   u_short proto;
-  u_int8_t mac[6];
+  u_char mac[6];
   struct in_addr ip;
   int result = 0;
 

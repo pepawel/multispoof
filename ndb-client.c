@@ -3,11 +3,11 @@
 #include <unistd.h>		/* close */
 #include <sys/socket.h>
 #include <arpa/inet.h>		/* struct in_addr */
-#include <libnet.h>		/* libnet_hex_aton */
 #include <sys/un.h>
 #include <string.h>		/* strerror */
 #include <errno.h>		/* errno */
 #include <glib.h>		/* g_strsplit */
+#include <stdlib.h>		/* strtoul */
 
 #define PNAME "ndb-client"
 
@@ -128,7 +128,7 @@ execute_command_long (out_vector, command, arg)
 int
 ndb_execute_gethost (mac, out_age, out_test_age, out_enabled, out_cur_test,
 		     ip)
-     u_int8_t *mac;
+     u_char *mac;
      time_t *out_age;
      time_t *out_test_age;
      int *out_enabled;
@@ -138,7 +138,7 @@ ndb_execute_gethost (mac, out_age, out_test_age, out_enabled, out_cur_test,
   int ret, mac_len, result;
   char buf[MSG_BUF_SIZE];
   char *mac_ptr, *age_ptr, *test_age_ptr, *enabled_ptr, *cur_test_ptr;
-  u_int8_t *mac_tmp;
+  u_char *mac_tmp;
 
   ret = execute_command (buf, "gethost", inet_ntoa (ip));
   if (1 == ret)
@@ -189,7 +189,7 @@ ndb_execute_gethost (mac, out_age, out_test_age, out_enabled, out_cur_test,
 int
 ndb_execute_host (ip, mac)
      struct in_addr ip;
-     u_int8_t *mac;
+     u_char *mac;
 {
   int ret, result;
   char buf[MSG_BUF_SIZE];

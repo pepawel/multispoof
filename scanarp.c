@@ -4,6 +4,8 @@
 #include <netinet/in.h>		/* struct in_addr, inet_ntoa */
 #include <arpa/inet.h>		/* inet_ntoa */
 #include <glib.h>		/* g_strv_length */
+#include <stdlib.h> /* exit, atoi, free */
+#include <unistd.h> /* sleep */
 
 #define PNAME "scanarp"
 
@@ -11,16 +13,17 @@
 #include "printpkt.h"
 #include "ndb-client.h"
 #include "netheaders.h"
+#include "validate.h"
 
 /* Fills packet with arp request, out_packet_s with arp size.
  * Uses t_ip/s_ip/s_mac for target ip/source ip/source mac. */
 void
 create_arp_request (packet, out_packet_s, t_ip, s_ip, s_mac)
-     u_int8_t *packet;
+     u_char *packet;
      int *out_packet_s;
      struct in_addr t_ip;
      struct in_addr s_ip;
-     u_int8_t *s_mac;
+     u_char *s_mac;
 {
   ethernet_packet_t *req_ethernet;
   arp_packet_t *req_arp;
@@ -79,7 +82,7 @@ main (int argc, char *argv[])
 
   /* Data needed for creating ARP requests */
   struct in_addr s_ip;
-  u_int8_t *s_mac;
+  u_char *s_mac;
   int mac_len;
 
   if (argc < 5)

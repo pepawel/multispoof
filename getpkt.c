@@ -7,7 +7,7 @@
  * Returns 1 on success, -1 otherwise. */
 int
 hex2byte (tab, string, size)
-     u_int8_t *tab;
+     u_char *tab;
      char *string;
      u_int16_t *size;
 {

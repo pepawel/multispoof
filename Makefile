@@ -8,7 +8,6 @@ CACHE_DIR=${VAR_PREFIX}/cache/multispoof
 DOC_DIR=${USR_PREFIX}/share/doc/multispoof
 
 CFLAGS+= -ggdb -Wall ${shell pkg-config --cflags glib-2.0}
-LIBNET=-lnet
 PCAP=-lpcap
 GLIB=${shell pkg-config --libs glib-2.0}
 COMPONENTS=tapio rx tx netdb cmac deta natman scanarp ndbexec conncheck
@@ -38,29 +37,23 @@ tx: tx.o getpkt.o
 	${CC} ${LDFLAGS} ${PCAP} $+ -o $@
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
-# FIXME: remove dependency on libnet from cmac
 cmac: cmac.o getpkt.o printpkt.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
-# FIXME: remove dependency on libnet from deta
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 deta: deta.o getpkt.o printpkt.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
-# FIXME: remove dependency on libnet from natman
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 natman: natman.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
-# FIXME: remove dependency on libnet from scanarp
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 scanarp: scanarp.o printpkt.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
-# FIXME: remove dependency on libnet from conncheck
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 conncheck: conncheck.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 ndbexec: ndbexec.c ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 
 test-netdb: tests/test-netdb.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
-# FIXME: remove dependency on libnet from conncheck
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 multispoof-dump: multispoof-dump.o ndb-client.o validate.o
-	${CC} ${LDFLAGS} ${GLIB} ${LIBNET} $+ -o $@
+	${CC} ${LDFLAGS} ${GLIB} $+ -o $@
 
 install: all
 	${INSTALL} -m 755 -d ${COMPONENTS_DIR}

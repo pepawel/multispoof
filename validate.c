@@ -1,6 +1,8 @@
 #include <stdio.h>		/* sscanf */
 #include <glib.h>		/* g_strdup_printf */
-#include <libnet.h>		/* FIXME: for u_int8_t only - remove it */
+#include <sys/types.h> /* u_char */
+#include <ctype.h> /* isspace */
+#include <stdlib.h> /* malloc, strtol, free */
 
 /* Given ip string returns standardized ip address as a string,
  * or NULL if address is bad. */
@@ -51,7 +53,7 @@ get_std_mac_str (const char *buf)
 }
 
 char *
-mac_ntoa (u_int8_t * mac)
+mac_ntoa (u_char * mac)
 {
   static char text[2 * 6 + 5 + 1];
 
@@ -59,3 +61,53 @@ mac_ntoa (u_int8_t * mac)
 	   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   return text;
 }
+
+/* libnet_hex_aton from libnet 1.1.2.1 */
+u_char *
+libnet_hex_aton(char *s, int *len)
+{
+  u_char *buf;
+  int i;
+  int32_t l;
+  char *pp;
+      
+  while (isspace(*s))
+  {
+    s++;
+  }
+  for (i = 0, *len = 0; s[i]; i++)
+  {
+    if (s[i] == ':')
+    {
+      (*len)++;
+    }
+  }
+  buf = malloc(*len + 1);
+  if (buf == NULL)
+  {
+    return (NULL);
+  }
+  /* expect len hex octets separated by ':' */
+  for (i = 0; i < *len + 1; i++)
+  {
+    l = strtol(s, (char **)&pp, 16);
+    if (pp == s || l > 0xff || l < 0)
+    {
+      *len = 0;
+      free(buf);
+      return (NULL);
+    }
+    if (!(*pp == ':' || (i == *len && (isspace(*pp) || *pp == '\0'))))
+    {
+      *len = 0;
+      free(buf);
+      return (NULL);
+    }
+    buf[i] = (u_char)l;
+    s = pp + 1;
+  }
+  /* return int8_tacter after the octets ala strtol(3) */
+  (*len)++;
+  return (buf);
+}
+
