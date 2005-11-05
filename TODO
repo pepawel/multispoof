@@ -1,3 +1,5 @@
+setsid and other things every gentle daemon should do
+
 Maybe add sysctl tuning to main script?
 
 Performance is not good - profile and optimize.
