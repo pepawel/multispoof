@@ -331,6 +331,17 @@
    23:21:31.098238 00:20:af:c4:6f:e3 &gt; 00:02:44:7b:09:11, ethertype IPv4 \
     (0x0800), length 98: IP 212.77.100.101 &gt; 192.168.1.42: icmp 64: \
     echo reply seq 4</pre>
+    <h4>Bugs</h4>
+    <p>
+      There is a bug in connectivity testing. Sometimes DNS packets
+      are dropped by multispoof, and user gets "dns problem" message.
+      There is no fix yet (patches are welcomed!), but a workaround.
+    </p>
+    <p>
+      Edit access-test script, comment the code that resolves domain
+      name and set HOST variable to the IP address of
+      www.google.com (for example).
+    </p>
 		<h4>Author, contact</h4>
 		<p>
       This software was written by me, Paweł Pokrywka.
