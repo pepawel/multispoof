@@ -8,7 +8,9 @@ CACHE_DIR=${VAR_PREFIX}/cache/multispoof
 DOC_DIR=${USR_PREFIX}/share/doc/multispoof
 
 CFLAGS+= -ggdb -Wall ${shell pkg-config --cflags glib-2.0}
-PCAP=-lpcap
+ifndef PCAP_STATIC
+	PCAP=-lpcap
+endif
 GLIB=${shell pkg-config --libs glib-2.0}
 COMPONENTS=tapio rx tx netdb cmac deta natman scanarp ndbexec conncheck
 
@@ -31,9 +33,9 @@ multispoof: multispoof.in VERSION Makefile
 	chmod +x multispoof
 tapio: tapio.o printpkt.o getpkt.o
 	${CC} ${LDFLAGS} $+ -o $@
-rx: rx.o printpkt.o
+rx: rx.o printpkt.o ${PCAP_STATIC}
 	${CC} ${LDFLAGS} ${PCAP} $+ -o $@
-tx: tx.o getpkt.o
+tx: tx.o getpkt.o ${PCAP_STATIC}
 	${CC} ${LDFLAGS} ${PCAP} $+ -o $@
 netdb: netdb.o netdb-op.o netdb-db.o validate.o
 	${CC} ${LDFLAGS} ${GLIB} $+ -o $@

@@ -176,11 +176,22 @@
     <pre>
    $ tar zxf multispoof-*.tar.gz</pre>
     <p>
-      Then enter newly created directory, optionally alter instalation
-      paths at the beginning of Makefile, and execute:
+      Then enter newly created directory and optionally alter
+      instalation paths at the beginning of Makefile.
+      If you want to link multispoof components with libpcap
+      dynamically (you should do this if your distribution ships
+      libpcap as a shared library like Debian 3.1) execute:
     </p>
     <pre>
    $ make</pre>
+    <p>
+      Otherwise, you need to specify <code>libpcap.a</code> file
+      to link statically with. For example on Redhat 9 it would be
+      placed in <code>/usr/lib/libpcap.a</code>, so you should
+      type:
+    </p>
+    <pre>
+   $ PCAP_STATIC=/usr/lib/libpcap.a make</pre>
     <p>
       After successful compilation, issue:
     </p>
