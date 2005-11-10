@@ -21,61 +21,104 @@ function usage
   exit
 }
 
+# Check if iptables support required features.
+function check_iptables
+{
+  if [ ! -z "$VERBOSE_MODE" ]
+  then
+    echo "multispoof: Testing iptables."
+  fi
+  ERR=0
+  if [ ! -z "$VERBOSE_MODE" ]
+  then
+    echo "$IPTABLES -t nat -A POSTROUTING -o tap0 -m owner --sid-owner 128"
+  fi
+  $IPTABLES -t nat -A POSTROUTING -o tap0 -m owner --sid-owner 128 || ERR=1
+  $IPTABLES -t nat -D POSTROUTING -o tap0 -m owner --sid-owner 128 \
+    2> /dev/null
+  
+  if [ ! -z "$VERBOSE_MODE" ]
+  then
+    echo "$IPTABLES -t nat -A POSTROUTING -m nth --every 16 --packet 4 --counter 8"
+  fi
+  $IPTABLES -t nat -A POSTROUTING -m nth --every 16 --packet 4 --counter 8 || ERR=1
+  $IPTABLES -t nat -D POSTROUTING -m nth \
+    --every 16 --packet 4 --counter 8 2> /dev/null
+
+  if [ ! -z "$VERBOSE_MODE" ]
+  then
+    echo "$IPTABLES -t nat -A PREROUTING -i tap0 -j DNAT --to 1.2.3.4"
+  fi
+  $IPTABLES -t nat -A PREROUTINGa -i tap0 -j DNAT --to 1.2.3.4 || ERR=1
+  $IPTABLES -t nat -D PREROUTING -i tap0 -j DNAT --to 1.2.3.4 \
+    2> /dev/null
+
+  if [ "$ERR" == "1" ]
+  then
+    echo "multispoof: Your system doesn't support required iptables features."
+    if [ -z "$VERBOSE_MODE" ]
+    then
+      echo "multispoof: Try to specify -v switch to see what's wrong."
+    fi
+    exit 1
+  fi
+}
+
 # Sets up netfilter rules
 function setup_nf_rules
 {
   MULTISPOOF_SID=`ps -o sid= $$`
 
-  iptables -t nat -N $MAIN_CHAIN 2> /dev/null
+  $IPTABLES -t nat -N $MAIN_CHAIN 2> /dev/null
   for i in `seq 0 9`
   do
-    iptables -t nat -N ${SUB_CHAIN_PREFIX}-$i 2> /dev/null
+    $IPTABLES -t nat -N ${SUB_CHAIN_PREFIX}-$i 2> /dev/null
   done
-  iptables -t nat -N $TEST_CHAIN 2> /dev/null
-  iptables -t nat -F $MAIN_CHAIN
+  $IPTABLES -t nat -N $TEST_CHAIN 2> /dev/null
+  $IPTABLES -t nat -F $MAIN_CHAIN
   for i in `seq 0 9`
   do
-    iptables -t nat -F ${SUB_CHAIN_PREFIX}-$i
+    $IPTABLES -t nat -F ${SUB_CHAIN_PREFIX}-$i
   done
   
-  iptables -t nat -A $MAIN_CHAIN -o $TAP_IFACE -m owner \
+  $IPTABLES -t nat -A $MAIN_CHAIN -o $TAP_IFACE -m owner \
     --sid-owner $MULTISPOOF_SID -j $TEST_CHAIN
   for i in `seq 0 9`
   do
-    iptables -t nat -A $MAIN_CHAIN -m nth \
+    $IPTABLES -t nat -A $MAIN_CHAIN -m nth \
       --every 10 --packet $i --counter 15 -j ${SUB_CHAIN_PREFIX}-$i
   done
-  iptables -t nat -A $MAIN_CHAIN -j DROP
-  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
+  $IPTABLES -t nat -A $MAIN_CHAIN -j DROP
+  $IPTABLES -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
      2>/dev/null
-  iptables -t nat -I POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN
+  $IPTABLES -t nat -I POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN
 
   # DNAT for all connections initiated from network, so
   # they could reach this host.
-  iptables -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
+  $IPTABLES -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
     2> /dev/null
-  iptables -t nat -I PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP
+  $IPTABLES -t nat -I PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP
 }
 
 # Cleans up netfilter rules
 function clean_up_nf_rules
 {
-  iptables -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
+  $IPTABLES -t nat -D POSTROUTING -o $TAP_IFACE -j $MAIN_CHAIN \
         2> /dev/null
-  iptables -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
+  $IPTABLES -t nat -D PREROUTING -i $TAP_IFACE -j DNAT --to $SCAN_IP \
     2> /dev/null
-  iptables -t nat -F $MAIN_CHAIN
+  $IPTABLES -t nat -F $MAIN_CHAIN
   for i in `seq 0 9`
   do
-    iptables -t nat -F ${SUB_CHAIN_PREFIX}-$i
+    $IPTABLES -t nat -F ${SUB_CHAIN_PREFIX}-$i
   done
-  iptables -t nat -F $TEST_CHAIN
-  iptables -t nat -X $MAIN_CHAIN
+  $IPTABLES -t nat -F $TEST_CHAIN
+  $IPTABLES -t nat -X $MAIN_CHAIN
   for i in `seq 0 9`
   do
-    iptables -t nat -X ${SUB_CHAIN_PREFIX}-$i
+    $IPTABLES -t nat -X ${SUB_CHAIN_PREFIX}-$i
   done
-  iptables -t nat -X $TEST_CHAIN
+  $IPTABLES -t nat -X $TEST_CHAIN
 }
 
 # Restores IP address and default gateway on network interface
@@ -234,6 +277,8 @@ then
   echo "multispoof: You need to specify interface to use."
   exit 1
 fi
+
+check_iptables
 
 if [ ! -z "$VERBOSE_MODE" ]
 then
