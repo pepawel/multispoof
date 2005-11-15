@@ -49,7 +49,7 @@ function check_iptables
   then
     echo "$IPTABLES -t nat -A PREROUTING -i tap0 -j DNAT --to 1.2.3.4"
   fi
-  $IPTABLES -t nat -A PREROUTINGa -i tap0 -j DNAT --to 1.2.3.4 || ERR=1
+  $IPTABLES -t nat -A PREROUTING -i tap0 -j DNAT --to 1.2.3.4 || ERR=1
   $IPTABLES -t nat -D PREROUTING -i tap0 -j DNAT --to 1.2.3.4 \
     2> /dev/null
 
@@ -272,17 +272,30 @@ do
   esac
 done
 
+PATH=$COMPONENTS_DIR:$PATH
+
 if [ -z "$REAL_IFACE" ]
 then
   echo "multispoof: You need to specify interface to use."
   exit 1
 fi
 
+if [ ! -z "$VERBOSE_MODE" ]
+then
+  echo "multispoof: PID $$"
+fi
+
 check_iptables
 
 if [ ! -z "$VERBOSE_MODE" ]
 then
-  echo "multispoof: PID $$"
+  echo "multispoof: Testing tap interface."
+fi
+
+tapio $TAP_IFACE -t || exit 1
+
+if [ ! -z "$VERBOSE_MODE" ]
+then
   echo "multispoof: Discovering network setup."
 fi
 
@@ -364,7 +377,6 @@ MAIN_CHAIN="multispoof-main"
 SUB_CHAIN_PREFIX="multispoof-sub"
 TEST_CHAIN="multispoof-test"
 TEST_SCRIPT="${COMPONENTS_DIR}/access-test"
-PATH=$COMPONENTS_DIR:$PATH
 
 trap clean_up 15 2
 
@@ -382,6 +394,8 @@ register_mac $TAP_IFACE
 setup_ifaces $REAL_IFACE $TAP_IFACE
 conncheck $NDB_SOCKET $TEST_CHAIN $CONNCHECK_INTERVAL \
   $MIN_AGE $MIN_TEST_AGE $TEST_SCRIPT $IPTABLES &
+
+echo "multispoof: Ready."
 
 # Wait for all children processes.
 wait

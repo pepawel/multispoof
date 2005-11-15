@@ -53,6 +53,7 @@ main (int argc, char **argv)
   fd_set fds;
   int ret, error = 1;
   char *tap_dev_name;
+  int test_flag=0;
 
   if (argc < 2)
   {
@@ -60,6 +61,10 @@ main (int argc, char **argv)
     exit (1);
   }
   tap_dev_name = argv[1];
+  if (argc > 2 && (0 == strcmp("-t", argv[2])))
+  {
+    test_flag=1;
+  }
 
   /* Prepare tap packet - put ip over ethernet proto in prefix */
   tap_packet[0] = 0;
@@ -88,61 +93,68 @@ main (int argc, char **argv)
     }
     else
     {
-      fprintf (stderr, "%s: virtual interface: %s\n", PNAME, ifr.ifr_name);
-
-      /* Wait for data on descriptors */
-      error = 0;
-      max_fd = max (tap_fd, stdin_fd) + 1;
-      while (1)
+      if (1 == test_flag)
       {
-	FD_ZERO (&fds);
-	FD_SET (tap_fd, &fds);
-	FD_SET (stdin_fd, &fds);
-
-	select (max_fd, &fds, NULL, NULL, NULL);
-
-	if (FD_ISSET (tap_fd, &fds))
-	{
-	  ret = read (tap_fd, tap_packet, MAX_PACKET_SIZE);
-	  if (-1 == ret)
-	  {
-	    fprintf (stderr, "%s: read from tap failed: %s\n",
-		     PNAME, strerror (errno));
-	    error = 1;
-	    break;
-	  }
-	  else
-	  {
-	    print_packet (tap_packet + TAP_PREFIX_SIZE,
-			  ret - TAP_PREFIX_SIZE);
-	  }
-	}
-	if (FD_ISSET (stdin_fd, &fds))
-	{
-	  ret = get_packet (tap_packet + TAP_PREFIX_SIZE, &tap_packet_s);
-	  if (-1 == ret)
-	  {
-	    fprintf (stderr, "%s: malformed input\n", PNAME);
-	    error = 1;
-	    break;
-	  }
-	  else if (0 == ret)
-	  {
-	    error = 0;
-	    break;
-	  }
-	  else
-	  {
-	    ret = write (tap_fd, tap_packet, tap_packet_s + TAP_PREFIX_SIZE);
-	    if (-1 == ret)
+        error = 0;
+      }
+      else
+      {
+        fprintf (stderr, "%s: virtual interface: %s\n", PNAME, ifr.ifr_name);
+  
+        /* Wait for data on descriptors */
+        error = 0;
+        max_fd = max (tap_fd, stdin_fd) + 1;
+        while (1)
+        {
+  	FD_ZERO (&fds);
+  	FD_SET (tap_fd, &fds);
+  	FD_SET (stdin_fd, &fds);
+  
+  	select (max_fd, &fds, NULL, NULL, NULL);
+  
+  	if (FD_ISSET (tap_fd, &fds))
+  	{
+  	  ret = read (tap_fd, tap_packet, MAX_PACKET_SIZE);
+  	  if (-1 == ret)
+  	  {
+  	    fprintf (stderr, "%s: read from tap failed: %s\n",
+  		     PNAME, strerror (errno));
+  	    error = 1;
+  	    break;
+  	  }
+  	  else
+  	  {
+  	    print_packet (tap_packet + TAP_PREFIX_SIZE,
+  			  ret - TAP_PREFIX_SIZE);
+  	  }
+  	}
+  	if (FD_ISSET (stdin_fd, &fds))
+  	{
+  	  ret = get_packet (tap_packet + TAP_PREFIX_SIZE, &tap_packet_s);
+  	  if (-1 == ret)
+  	  {
+  	    fprintf (stderr, "%s: malformed input\n", PNAME);
+  	    error = 1;
+  	    break;
+	    }
+	    else if (0 == ret)
 	    {
-	      fprintf (stderr, "%s: writing to tap failed: %s\n",
-		       PNAME, strerror (errno));
-	      error = 1;
+	      error = 0;
 	      break;
 	    }
+	    else
+	    {
+	      ret = write(tap_fd, tap_packet, tap_packet_s + TAP_PREFIX_SIZE);
+	      if (-1 == ret)
+	      {
+	        fprintf (stderr, "%s: writing to tap failed: %s\n",
+		        PNAME, strerror (errno));
+	        error = 1;
+	        break;
+	      }
+	    }
 	  }
-	}
+        }
       }
     }
   }

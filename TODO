@@ -1,3 +1,7 @@
+Measure packet loss. Does it happen only on connectivity testing?
+Why is is happening? The problem is probably somewhere in mac change
+pipeline. Fix it.
+
 setsid and other things every gentle daemon should do
 
 Maybe add sysctl tuning to main script?
