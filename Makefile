@@ -16,7 +16,8 @@ COMPONENTS=tapio rx tx netdb cmac deta natman scanarp ndbexec conncheck
 
 # Dirty hack to make changelog, README and VERSION available in tarball.
 # It will break on _darcs hierarchy change.
-CHANGELOG_HACK=_darcs/current/Changelog
+CHANGELOG_NAME=Changelog
+CHANGELOG_HACK=_darcs/current/${CHANGELOG_NAME}
 README_HACK=_darcs/current/README
 VERSION_HACK=_darcs/current/VERSION
 INSTALL=install
@@ -90,9 +91,12 @@ indent:
 	-cs -di2 -ndj -nfc1 -nfca -hnl -i2 -ip5 -lp -pcs -nprs -psl -saf \
 	-sai -saw -nsc -nsob
 upload:
-	# Uploads README to sourceforge
-	scp README.html \
+	# Create changelog
+	darcs changes > ${CHANGELOG_NAME}
+	# Uploads Changelog and README to sourceforge
+	scp ${CHANGELOG_NAME} README.html \
 		c09@shell.sourceforge.net:/home/groups/m/mu/multispoof/htdocs/
+	rm ${CHANGELOG_NAME}
 dist: clean README VERSION
 	# If file Changelog exists in repository - stop, because
 	# otherwise it would be deleted
