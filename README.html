@@ -112,7 +112,7 @@
       Version history can be found in
       <a href="/Changelog">Changelog</a> file.
     </p>
-    <h4>Requirements</h4>
+    <h4>Requirements<a name="requirements">&nbsp;</a></h4>
     <p>
       In order to run multispoof you need:
   		<ul>
@@ -359,7 +359,40 @@
       name and set HOST variable to the IP address of
       www.google.com (for example).
     </p>
-		<h4>Author, contact</h4>
+    <h4>FAQ</h4>
+    <ol>
+		  <li>
+        <p>I get following error on multispoof compilation:
+          <pre>rx.c:97: error: `PCAP_D_IN' undeclared (first use in this function)</pre>
+        </p>
+        <p>You need more recent libpcap. See <a href="#requirements">requirements</a>.</p>
+      </li>
+		  <li>
+        <p>When I run multispoof following message appears:
+          <pre>multispoof: Your system doesn't support required iptables features.</pre>
+        <p>Well, it means your system doesn't support required iptables features. See <a href="#requirements">requirements</a> for details. Hint: Try to specify -v switch to see what features are missing.
+        </p>
+      </li>
+      <li>
+        <p>Does multispoof run on anything other than Linux?</p>
+        <p>No. It requires Linux-specific kernel features. Of course it can be ported, but it isn't and probably won't be.</p>
+      </li>
+      <li>
+        <p>Do you plan to make multispoof run on &gt; 2.6.11 kernels? Could you add feature X?</p>
+        <p>No, I don't plan to work on multispoof anymore.</p>
+      </li>
+      <li>
+        <p>
+          I don't know anything about networks and Linux.
+          I just want to steal some bandwidth from my ISP.
+          Make multispoof work for me!
+        </p>
+        <p>
+          Sure, but first have a look <a href="http://en.wikipedia.org/wiki/Script_kiddies">here</a>.
+        </p>
+      </li>
+    </ol>
+    <h4>Author, contact</h4>
 		<p>
       This software was written by me, Paweł Pokrywka.
 			You can find my email address as well as my gpg key at:<br />
