@@ -39,6 +39,13 @@
 	<body>
 		<h2>multispoof</h2>
 		<h3>Parallel spoofing for throughput increase</h3>
+    <h4>Notice</h4>
+    <p>
+      Because of changes in Linux kernel, particularly in netfilter/iptables, multispoof won't run on recent systems (see notes in requirements section).
+    </p>
+    <p>
+      It can be fixed, but probably won't be, as I don't have enough time. I'll welcome patches though.
+    </p>
 		<h4>What is
       <a href="http://multispoof.cryptonix.org/">multispoof</a>?</h4>
     <p>
@@ -122,9 +129,18 @@
             <ul>
               <li>Tun/tap wirtual network interfaces.</li>
               <li>Unix sockets.</li>
-              <li>Netfilter with SNAT and DNAT targets, nth and owner
-                  matches (nth is in <a href="http://www.netfilter.org/patch-o-matic/">patch-o-matic</a> package).
-                  <b>Note:</b> Part of the owner match functionality was <a href="http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=34b4a4a624bafe089107966a6c56d2a1aca026d4">removed</a>. Unfortunately, multispoof requires that part (particularly --sid-owner option) for correct operation. For now, the only workaround is to use older kernel version - 2.6.11 works ok.</li>
+              <li>
+                Netfilter with SNAT and DNAT targets, nth and owner
+                matches (nth is in <a href="http://www.netfilter.org/patch-o-matic/">patch-o-matic</a> package).
+                  <ul>
+                    <li>
+                      <b>Note 1:</b> Part of the owner match functionality was <a href="http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=34b4a4a624bafe089107966a6c56d2a1aca026d4">removed</a>. Unfortunately, multispoof requires that part (particularly --sid-owner option) for correct operation. For now, the only workaround is to use older kernel version - 2.6.11 works ok.
+                    </li>
+                    <li>
+                      <b>Note 2:</b> As nth match was removed from <a href="http://www.netfilter.org/patch-o-matic/">patch-o-matic</a> it is not possible to run multispoof using recent version of PoM. Possible workarounds: use older PoM or rewrite multispoof load-balancing code to make use of statistic match.
+                    </li>
+                  </ul>
+                </li>
             </ul>
 			  </li>
         <li>
