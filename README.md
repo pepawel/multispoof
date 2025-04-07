@@ -204,4 +204,4 @@ Edit access-test script, comment the code that resolves domain name and set HOST
 #### Author, contact
 
 This software was written by me, Paweł Pokrywka. You can find my email address here:
-[https://blog.pawelpokrywka.com](https://blog.pawelpokrywka.com)
+[https://www.pawelpokrywka.com](https://www.pawelpokrywka.com)
