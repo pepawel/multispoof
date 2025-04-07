@@ -69,7 +69,7 @@ $ make
 Otherwise, you need to specify `libpcap.a` file to link statically with. For example on Redhat 9 it would be placed in `/usr/lib/libpcap.a`, so you should type:
 
 ```
-$ PCAP\_STATIC=/usr/lib/libpcap.a make
+$ PCAP_STATIC=/usr/lib/libpcap.a make
 ```
 
 After successful compilation, issue:
